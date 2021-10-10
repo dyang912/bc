@@ -101,8 +101,7 @@ pub fn verify(root: &H256, datum: &H256, proof: &[H256], index: usize, leaf_size
     }
     assert_eq!(proof.len(), proof_num);
 
-    let mut raw_hash: [u8; 32] = [0; 32];
-    raw_hash[0..32].copy_from_slice(datum.as_ref());
+    let raw_hash: [u8; 32] = datum.into();
     let mut hash = H256::from(raw_hash);
     let mut idx = index;
     for x in proof.iter().rev() {

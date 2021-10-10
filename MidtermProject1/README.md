@@ -2,16 +2,18 @@
 
 Due 11 PM, October 12, 2021
 
-For midterm project, you are going to build a simplified Bitcoin client. The goal of the client is not to run in Bitcoin mainnet or any public testnet. Instead, the goal is to run it inside your team and let you have fun with it. You have plenty of freedom of designing and implementing this project.
+You may form a team of 2 with another student in this class for this and subsequent parts of this midterm project. You do not have to form a team. If you do at any point, you must work as a team through the end of Part 6.  A team of two should submit a single solution in the following manner: One submits the entire solution that includes both names; the other submits only the name of the other teammate (both must make a submission by the deadline).  Consider to use Piazza to look for a teammate.
 
-The midterm project should be based on your code of warmup 2. You are free to discuss warmup 2 or merge codes of teammates after it is due. 
+Through this midterm project, you are going to build a simplified Bitcoin client. The goal of the client is not to run in Bitcoin mainnet or any public testnet. Instead, the goal is to run it inside your team and let you have fun with it. You have plenty of freedom of designing and implementing this project.
 
-This is the first part of midterm project. You are going to finish the **Block** struct and the **Blockchain** struct. Please work in teams of 2.
+The midterm project should be based on your code of warmup 2. You are free to discuss warmup 2 or merge codes of teammates after it is due.
+
+This is the first part of midterm project. You are going to finish the **Block** struct and the **Blockchain** struct.
 
 ## Repository management and submission
 
 1. We suggest you to continue to work on your repo of warmup 2. Team members should work on one same repo.
-2. Students can run tests (by command `cargo test`) provided in the code to check the validity of their implementation. However, passing these tests doesn't guarantee getting full grades. 
+2. Students can run tests (by command `cargo test`) provided in the code to check the validity of their implementation. However, passing these tests doesn't guarantee getting full grades.
 3. After finishing this part, before submitting your code, please remove your tests if you write any. Please leave `mod tests` at its original code, and this is for TAs to conveniently do the grading.
 4. After step 3, please push to your github repo, and click `Code`->`Download ZIP` on github to download a zip file.
 5. Rename it to your netids as `netid1-netid2.zip`. Upload the zip file on Canvas. Please check your file size and it should be less than 1MB or 2MB. One submission for one team is enough.
@@ -41,15 +43,15 @@ We suggest (but not require) you to create a struct **Content** to include the c
 
 Notice that to create the Merkle root of **Transaction**, you need to implement trait **Hashable** for **Transaction**. The way to implement that trait is first serialize it into bytes, then call SHA256 to hash the bytes.
 
-You need to implement trait **Hashable** for **Block**. They way to hash a block is to hash **Header** rather than **Content**. So you can first implement **Hashable** for **Header**. When you hash a **Block**, you can directly call the hash function of **Header**.
+You need to implement trait **Hashable** for **Block**. They way to hash a block is to hash **Header** rather than **Content**. So you can first implement **Hashable** for **Header** (Similarly, first serialize it into bytes, then call SHA256 to hash the bytes). When you hash a **Block**, you can directly call the hash function of **Header**.
 
-To test and debug, you need to finish the function *generate_random_block*. This function takes an argument named *parent*. The generated block should contain that *parent*. And the *nonce* should be a random integer. As for content, you can simply let it be empty. So merkle\_root should be the Merkle root of an empty input. As for fields such as difficulty and timestamp, choose whatever you like.
+To test and debug, you need to finish the function *generate_random_block*. This function takes an argument named *parent*. The generated block should contain that *parent*. And the *nonce* should be a random integer. As for content, you can simply create some arbitrary transaction(s), e.g. `let transactions: Vec<Transaction> = vec![Default::default()];`. Then, use the **MerkleTree** struct to calculate the Merkle root of these transactions. As for fields such as difficulty and timestamp, choose whatever you like.
 
 ### Blockchain
 
 You need to finish a struct named **Blockchain**, which contains the necessary information of a direct acyclic graph (DAG) and provides functions related to the longest chain rule. The following functions are required:
-1. new() - create a new blockchain that only contains the information of the genesis block. (Define genesis block by your self.)
-2. insert() - insert a block into the blockchain.
+1. new() - create a new blockchain that only contains the information of the genesis block. (Define genesis block by yourself. For this assignment, you can define it arbitrarily; the header and the content of the genesis block does not matter.)
+2. insert() - insert a block into the blockchain. (For this assignment, you can assume the block always has a valid parent.)
 3. tip() - return the last block's hash in the longest chain.
 4. all_blocks_in_longest_chain() - return all blocks' hashes, from the genesis to the tip. This function will not be tested in this part, and will be used in debugging in the future.
 

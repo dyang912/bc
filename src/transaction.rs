@@ -1,16 +1,24 @@
-use serde::{Serialize,Deserialize};
-use ring::signature::{Ed25519KeyPair, Signature, KeyPair};//, VerificationAlgorithm, EdDSAParameters};
-use ring::digest;
-use ring::rand::SecureRandom;
+use serde::{Serialize, Deserialize};
+use ring::{digest, rand::SecureRandom, signature::{Ed25519KeyPair, Signature, KeyPair}};
+use crate::crypto::{key_pair, hash::{H256, Hashable}};
+
+const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
+    (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + (384 + 7) / 8));
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct Header {
+    msg: String
+}
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Transaction {
-    msg: String
+    header: Header,
+    //sig: Option<[u8; MAX_LEN]>
 }
 
 /// Create digital signature of a transaction
 pub fn sign(t: &Transaction, key: &Ed25519KeyPair) -> Signature {
-    let serialized = bincode::serialize(t).unwrap();
+    let serialized = bincode::serialize(&t.header).unwrap();
     let msg = digest::digest(&digest::SHA256, &serialized);
     key.sign(msg.as_ref())
 }
@@ -23,17 +31,27 @@ pub fn verify(t: &Transaction, public_key: &<Ed25519KeyPair as KeyPair>::PublicK
     peer_public_key.verify(msg.as_ref(), signature.as_ref()).is_ok()
 }
 
+impl Hashable for Transaction {
+    fn hash(&self) -> H256 {
+        let serialized = bincode::serialize(&self).unwrap();
+        ring::digest::digest(&ring::digest::SHA256, &serialized).into()
+    }
+}
+
+pub fn generate_random_transaction() -> Transaction {
+    let sr = ring::rand::SystemRandom::new();
+    let mut result = [0u8; 32];
+    sr.fill(&mut result).unwrap();
+    let mut trans = Transaction{ header: Header{ msg: result[0].to_string()} };
+    // let key = key_pair::random();
+    // trans.sig = Some(*sign(&trans, &key).as_ref());
+    trans
+}
+
 #[cfg(any(test, test_utilities))]
 mod tests {
     use super::*;
     use crate::crypto::key_pair;
-
-    pub fn generate_random_transaction() -> Transaction {
-        let sr = ring::rand::SystemRandom::new();
-        let mut result = [0u8; 32];
-        sr.fill(&mut result).unwrap();
-        Transaction{msg: result[0].to_string()}
-    }
 
     #[test]
     fn sign_verify() {
