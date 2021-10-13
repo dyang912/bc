@@ -5,12 +5,12 @@ use crate::crypto::{key_pair, hash::{H256, Hashable}};
 const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
     (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + (384 + 7) / 8));
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default,Clone)]
 struct Header {
     msg: String
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default,Clone)]
 pub struct Transaction {
     header: Header,
     //sig: Option<[u8; MAX_LEN]>

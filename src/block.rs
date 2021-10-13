@@ -6,17 +6,17 @@ use chrono::Utc;
 use rand::Rng;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-struct Header {
-    parent: H256,
+pub struct Header {
+    pub parent: H256,
     nonce: u32,
     difficulty: H256,
     timestamp: i64,
     merkle_root: H256,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug,Default,Clone)]
 pub struct Block {
-    header: Header,
+    pub header: Header,
     content: Vec<Transaction>
 }
 

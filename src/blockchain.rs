@@ -1,29 +1,91 @@
 use crate::block::Block;
-use crate::crypto::hash::H256;
+use crate::crypto::hash::{H256, Hashable};
+use std::collections::HashMap;
+
+
 
 pub struct Blockchain {
+    blockchain: HashMap<H256,Block>, //blocks in the blockchain
+    blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block
+    height: u32,
+    tip: H256
 }
 
 impl Blockchain {
     /// Create a new blockchain, only containing the genesis block
     pub fn new() -> Self {
-        unimplemented!()
+        let mut blocks = HashMap::new();
+        let mut blockchain = HashMap::new();
+        let genesis = Block::default();
+        let genesis2 = genesis.clone();
+        let hashvalue = genesis.hash();
+        blocks.insert(hashvalue,(genesis,0));
+        blockchain.insert(hashvalue,genesis2);
+        Blockchain{
+            blockchain: blockchain,
+            blocks:blocks,
+            height: 0,
+            tip: hashvalue
+        }
     }
 
     /// Insert a block into blockchain
     pub fn insert(&mut self, block: &Block) {
-        unimplemented!()
+        let newblock = block.clone();
+        let parent = &newblock.header.parent;
+        let mut nheight =0;
+
+        //The parent of the newly inserted block is the tip of the blockchain, insert new block directly
+        if parent == &self.tip{
+            self.tip = newblock.hash();
+            self.height = self.height+1;
+            nheight = self.height;
+        //after insert this block, another branch becomes the longest chain
+        }else if self.height< self.blocks.get(&parent).unwrap().1 +1 {
+            self.tip = newblock.hash();
+            nheight = self.blocks.get(&parent).unwrap().1 +1;
+            self.height = nheight;
+            //update blockchain
+            let mut new_chain: Vec<H256> = Vec::new(); //the last one element's parent is in the blockchain 
+            let mut current_block = &newblock;
+            let mut latest_parent = &current_block.header.parent;
+            new_chain.push(current_block.hash());
+            while !self.blockchain.contains_key(&latest_parent){
+                current_block = &self.blocks.get(&latest_parent).unwrap().0;
+                latest_parent = &current_block.header.parent;  
+                new_chain.push(current_block.hash()); 
+            }
+            //remove the blocks from blockchain
+            while self.tip != self.blockchain.get(&latest_parent).unwrap().hash(){ 
+                self.blockchain.remove_entry(&self.tip);
+                self.tip = self.blocks.get(&self.tip).unwrap().0.header.parent; 
+            }
+            //insert the blocks in new_chain into blockchain
+            let mut temp: Block;
+            for i in new_chain.iter().rev(){ 
+                temp = self.blocks.get(&i).unwrap().0.clone();
+                self.blockchain.insert(*i, temp);
+            }
+        }else{ 
+            //the blockchain doestn't change, only insert new block into blocks
+            nheight = self.blocks.get(&parent).unwrap().1 +1;
+        }
+        self.blocks.insert(newblock.hash(), (newblock,nheight));
     }
 
     /// Get the last block's hash of the longest chain
     pub fn tip(&self) -> H256 {
-        unimplemented!()
+        self.tip
     }
 
     /// Get the last block's hash of the longest chain
     #[cfg(any(test, test_utilities))]
     pub fn all_blocks_in_longest_chain(&self) -> Vec<H256> {
-        unimplemented!()
+        let mut block_hash: Vec<H256> = Vec::new();
+        for block in self.blockchain.iter() {
+            block_hash.push(*block.0);
+        }
+        block_hash
     }
 }
 
