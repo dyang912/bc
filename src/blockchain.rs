@@ -1,9 +1,11 @@
+use std::borrow::Borrow;
 use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
 use std::collections::HashMap;
+use crate::block::generate_random_block;
+use ring::rand::SecureRandom;
 
-
-
+#[derive(Debug)]
 pub struct Blockchain {
     blockchain: HashMap<H256,Block>, //blocks in the blockchain
     blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block
@@ -16,7 +18,13 @@ impl Blockchain {
     pub fn new() -> Self {
         let mut blocks = HashMap::new();
         let mut blockchain = HashMap::new();
-        let genesis = Block::default();
+
+        let sr = ring::rand::SystemRandom::new();
+        let mut result = [0u8; 32];
+        sr.fill(&mut result).unwrap();
+        let t = H256::from(result);
+        let genesis = generate_random_block(&t);
+
         let genesis2 = genesis.clone();
         let hashvalue = genesis.hash();
         blocks.insert(hashvalue,(genesis,0));
@@ -78,7 +86,11 @@ impl Blockchain {
         self.tip
     }
 
-    /// Get the last block's hash of the longest chain
+    pub fn get_difficulty(&self) -> H256 {
+        self.blocks.get(self.tip.borrow()).unwrap().0.get_difficulty()
+    }
+
+    /// Get all blocks' hash of the longest chain
     #[cfg(any(test, test_utilities))]
     pub fn all_blocks_in_longest_chain(&self) -> Vec<H256> {
         let mut block_hash: Vec<H256> = Vec::new();

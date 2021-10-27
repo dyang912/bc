@@ -1,13 +1,13 @@
 # Midterm Project, Part 2
 
-Due 11 PM, October 19, 2021
+Due 11 PM, October 28, 2021
 
 In this part of midterm project, you are going to implement the **mining** module of Bitcoin client. The mining module, or miner, will produce blocks that solve proof-of-work puzzle.
 
 ## Repository management and submission
 
-1. We suggest you to continue to work on your repo of midterm project. 
-2. Submit a report in pdf on compass2g. Please don't submit code. One submission for one team is enough.
+1. We suggest you to continue to work on your repo of midterm project.
+2. Submit a report in pdf on Canvas. Please don't submit code. One submission for one team is enough.
 
 ## Code provided
 The following files are related to this assignment.
@@ -17,7 +17,7 @@ The following files are related to this assignment.
 
 To see how the code in these files works, you can run `cargo run -- -vv` and you will see these logs in the terminal
 > Miner initialized into paused mode
-> 
+>
 > API server listening at 127.0.0.1:7000
 
 This means the miner is not started yet, however, you can use API to start it. In a browser (or *curl* command), go to
@@ -46,7 +46,7 @@ Specifically, the miner needs the following,
 Hence, in this part, you only need to add blockchain into miner **Context** struct. It is running in another thread (cf. `thread::Builder::new` in line 67), hence we need the thread safe wrapper of blockchain. Please follow these steps,
 1. Read the document of [Arc](https://doc.rust-lang.org/std/sync/struct.Arc.html) and [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html) in std crate of Rust.
 2. Add `Arc<Mutex<Blockchain>>` to the definition of miner **Context** struct.
-3. Add `blockchain: &Arc<Mutex<Blockchain>>` to the argument of *new()* function. Inside *new()* function, use `Arc::clone(block)` to get a clone and pass it to **Context**.
+3. Add `blockchain: &Arc<Mutex<Blockchain>>` to the argument of *new()* function. Inside *new()* function, use `Arc::clone(blockchain)` to get a clone and pass it to **Context**.
 
 At last, you need to go to *src/main.rs*, and change the code related to `miner::new`. You need to first create a new **Blockchain**, then turn it into `Arc<Mutex<Blockchain>>`, then pass it into function `miner::new`.
 
@@ -76,24 +76,24 @@ If it is satisfied, the block is successfully generated. Congratulations! Just i
 
 After you finish the programming, you will have a program that can mine blocks. The experiment section requires you to run the program with different threshold/difficulty and measure the mining rate.
 
-First, you need to set a difficulty. Since we use static difficulty, it's sufficient to set that of the genesis block. (Recall that the genesis block is created when calling *Blockchain::new()*.) Please run experiments with **at least 3 different difficulty values**. 
+First, you need to set a difficulty. Since we use static difficulty, it's sufficient to set that of the genesis block. (Recall that the genesis block is created when calling *Blockchain::new()*.) Please run experiments with **at least 3 different difficulty values**.
 
 Then, start the program **in release version** by running
 ```
 cargo run --release -- -vv
 ``` 
-and call API via browser or curl command: 
+and call API via browser or curl command:
 ```
 http://127.0.0.1:7000/miner/start?lambda=0
 ```
 
 After some time, stop miner (or the program), count the number of blocks and calculate the mining rate (block per second). Please run experiments such that the mining rate is not too large or too low. 0.01 to 1000 blocks per second is a reasonable range. (If too low, you have to wait for too long. If too high, you may run out of memory.)
 
-You also need to write the function to get the number of blocks if you don't have one. You can do it in your way. It can be in *src/blockchain.rs*, *src/miner.rs*, and/or *src/api/mod.rs*, etc. 
+You also need to write the function to get the number of blocks if you don't have one. You can do it in your way. It can be in *src/blockchain.rs*, *src/miner.rs*, and/or *src/api/mod.rs*, etc.
 
 ## Report
 
-Please submit a report in pdf. Please use double spacing between paragraphs and use 16 pt font size. Also please keep it within one page.
+Please submit a report in pdf. Please use double spacing between paragraphs and use 11 pt font size. Also please keep it within one page.
 
 Firstly, the report should have both teammate's name and netid. Then you need to write the following paragraphs.
 
