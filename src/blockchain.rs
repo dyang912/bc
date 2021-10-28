@@ -48,8 +48,9 @@ impl Blockchain {
             self.tip = newblock.hash();
             self.height = self.height+1;
             nheight = self.height;
+            self.blockchain.insert(self.tip, block.clone());
         //after insert this block, another branch becomes the longest chain
-        }else if self.height< self.blocks.get(&parent).unwrap().1 +1 {
+        } else if self.height < self.blocks.get(&parent).unwrap().1 +1 {
             self.tip = newblock.hash();
             nheight = self.blocks.get(&parent).unwrap().1 +1;
             self.height = nheight;
@@ -74,6 +75,7 @@ impl Blockchain {
                 temp = self.blocks.get(&i).unwrap().0.clone();
                 self.blockchain.insert(*i, temp);
             }
+            self.blockchain.insert(self.tip, block.clone());
         }else{ 
             //the blockchain doestn't change, only insert new block into blocks
             nheight = self.blocks.get(&parent).unwrap().1 +1;
@@ -87,7 +89,11 @@ impl Blockchain {
     }
 
     pub fn get_difficulty(&self) -> H256 {
-        self.blocks.get(self.tip.borrow()).unwrap().0.get_difficulty()
+        self.blockchain.get(self.tip.borrow()).unwrap().get_difficulty()
+    }
+
+    pub fn get_length(&self) -> u32 {
+        self.height
     }
 
     /// Get all blocks' hash of the longest chain

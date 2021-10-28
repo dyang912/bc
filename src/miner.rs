@@ -1,3 +1,4 @@
+use std::ops::Sub;
 use crate::network::server::Handle as ServerHandle;
 use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
@@ -32,6 +33,9 @@ pub struct Context {
     operating_state: OperatingState,
     server: ServerHandle,
     arc: Arc<Mutex<Blockchain>>,
+    mined: u32,
+    inserted: u32,
+    start_time: SystemTime,
 }
 
 #[derive(Clone)]
@@ -51,6 +55,9 @@ pub fn new(
         operating_state: OperatingState::Paused,
         server: server.clone(),
         arc: arc.clone(),
+        mined: 0,
+        inserted: 0,
+        start_time: SystemTime::now(),
     };
 
     let handle = Handle {
@@ -92,6 +99,8 @@ impl Context {
             }
             ControlSignal::Start(i) => {
                 info!("Miner starting in continuous mode with lambda {}", i);
+                self.start_time = SystemTime::now();
+                // println!("---------- start :{:?}", SystemTime::now());
                 self.operating_state = OperatingState::Run(i);
             }
         }
@@ -122,8 +131,6 @@ impl Context {
                 return;
             }
 
-            // TODO: actual mining
-
             // get parent
             let mut bc = self.arc.lock().unwrap();
             let parent = bc.tip();
@@ -144,11 +151,20 @@ impl Context {
 
             let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
 
-            println!("{:?}, {:?}", difficulty, blk);
+            self.mined += 1;
+            // if self.mined % 100 == 0 {
+            //     println!("{:?} {}", difficulty, self.mined);
+            // }
             if blk.hash() <= difficulty {
                 bc.insert(&blk);
-                println!("insert success! {:?}", bc);
+                self.inserted += 1;
+                // println!("insert success! {}, {}/{}", bc.get_length(), self.inserted, self.mined);
             }
+
+            // if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
+            //     println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
+            //     break
+            // }
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {

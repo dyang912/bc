@@ -48,9 +48,10 @@ pub fn generate_random_block(parent: &H256) -> Block {
     let parent_array: [u8; 32] = parent.into();
 
     // init random difficulty
-    let sr = ring::rand::SystemRandom::new();
     let mut result = [0u8; 32];
-    sr.fill(&mut result).unwrap();
+    // let sr = ring::rand::SystemRandom::new();
+    // sr.fill(&mut result).unwrap(); // random difficulty
+    result[0] = 1;
 
     // init random transactions
     let trans:Vec<Transaction> = vec![
