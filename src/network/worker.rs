@@ -5,6 +5,7 @@ use crossbeam::channel;
 use log::{debug, warn};
 use std::sync::{Arc, Mutex};
 use crate::block::Block;
+use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
 use crate::blockchain::Blockchain;
 
@@ -59,6 +60,7 @@ impl Context {
                 }
                 //For NewBlockHashes, if the hashes are not already in blockchain, you need to ask for them by sending GetBlocks.
                 Message::NewBlockHashes(hashes) => {
+                    println!("reveiced the broadcast new block ");
                     let mut new_blocks: Vec<H256>= Vec::new();
                     let blkchain =self.arc.lock().unwrap();
                     for hash in hashes{
@@ -67,11 +69,14 @@ impl Context {
                         }
                     }
                     if new_blocks.len()>0{
+                        println!("ask for them by sending GetBlocks");
                         peer.write(Message::GetBlocks(new_blocks));
+                        
                     }
                 }
                 //if the hashes are in blockchain, you can get theses blocks and send them by Blocks message
                 Message::GetBlocks(hashes) =>{
+                    println!("reveived the request of ask foo sending getblocks");
                     let mut blocks : Vec<Block> = Vec::new();
                     let blkchain =self.arc.lock().unwrap();
                     for hash in hashes{
@@ -81,36 +86,50 @@ impl Context {
                         }
                     }
                     if blocks.len()>0{
+                        println!("sending blocks");
                         peer.write(Message::Blocks(blocks));
+                        
                     }
                 }
                 //for Blocks, insert the blocks into blockchain if not already in it
                 Message::Blocks(blocks)=>{
+                    let mut memory: HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
                     //don't find the parents of some blocks in #Block => #GetBlocks
                     //broadcast #NewBlockhashes when received onr from #Block
                     let mut new_hashes: Vec<H256> = Vec::new();
-                    // let mut no_parents :Vec::<H256> = Vec::new();
+                    let mut no_parents :Vec::<H256> = Vec::new();
                     let mut blkchain =self.arc.lock().unwrap();
                     for block in blocks {
                         if !blkchain.blockchain.contains_key(&block.hash()){
                             let parent = &block.header.parent;
                             if blkchain.blockchain.contains_key(parent) && block.hash()<=block.header.difficulty{
-                                blkchain.blockchain.insert(block.hash(),block.clone());
+                                blkchain.insert(&block.clone());
                                 new_hashes.push(block.hash());
+                                let mut parent: H256 = block.hash();
+                                while memory.contains_key(&parent) {
+                                    blkchain.insert(&(memory.get(&parent).unwrap()));
+                                    let mut new_parent = memory.get(&parent).unwrap().hash();
+                                    memory.remove(&parent);
+                                    parent = new_parent;
+                                    new_hashes.push(parent);
+                                }
+                            
+                            }else{
+                                if block.hash()<=block.header.difficulty{
+                                    memory.insert(block.header.parent,block.clone());
+                                    no_parents.push(*parent);
+                                }
                             }
-                            // }else{
-                            //     if block.hash()<=block.header.difficulty{
-                            //         no_parents.push(*parent);
-                            //     }
-                            // }
                         }  
                     }
                     if new_hashes.len()>0{
+                        println!("worker broadcast blocks");
                         self.server.broadcast(Message::NewBlockHashes(new_hashes));
+                        
                     }
-                    // if no_parents.len()>0{
-                    //     peer.write(Message::GetBlocks(no_parents));
-                    // }
+                    if no_parents.len()>0{
+                        peer.write(Message::GetBlocks(no_parents));
+                    }
                 }
 
             }

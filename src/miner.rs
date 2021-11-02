@@ -154,9 +154,9 @@ impl Context {
             let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
 
             self.mined += 1;
-            if self.mined % 100 == 0 {
-                // println!("{:?} {}", difficulty, self.mined);
-            }
+            // if self.mined % 100 == 0 {
+            //     println!("{:?} {}", difficulty, self.mined);
+            // }
             if blk.hash() <= difficulty {
                 bc.insert(&blk);
                 self.inserted += 1;
