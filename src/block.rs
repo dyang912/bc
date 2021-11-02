@@ -9,12 +9,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Header {
     pub parent: H256,
     nonce: u32,
-    difficulty: H256,
+    pub difficulty: H256,
     timestamp: u128,
     merkle_root: H256,
 }
 
-#[derive(Serialize, Debug,Default, Clone)]
+#[derive(Serialize, Deserialize, Debug,Default, Clone)]
 pub struct Block {
     pub header: Header,
     content: Vec<Transaction>

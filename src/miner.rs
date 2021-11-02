@@ -7,6 +7,8 @@ use crate::crypto::merkle::MerkleTree;
 use crate::transaction::{Transaction, generate_random_transaction};
 use std::time::{SystemTime, UNIX_EPOCH};
 use rand::Rng;
+use crate::network::message::Message;
+
 
 use log::info;
 
@@ -54,7 +56,7 @@ pub fn new(
         control_chan: signal_chan_receiver,
         operating_state: OperatingState::Paused,
         server: server.clone(),
-        arc: arc.clone(),
+        arc: Arc::clone(arc),
         mined: 0,
         inserted: 0,
         start_time: SystemTime::now(),
@@ -152,19 +154,23 @@ impl Context {
             let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
 
             self.mined += 1;
-            // if self.mined % 100 == 0 {
-            //     println!("{:?} {}", difficulty, self.mined);
-            // }
+            if self.mined % 100 == 0 {
+                // println!("{:?} {}", difficulty, self.mined);
+            }
             if blk.hash() <= difficulty {
                 bc.insert(&blk);
                 self.inserted += 1;
-                // println!("insert success! {}, {}/{}", bc.get_length(), self.inserted, self.mined);
+                let mut block_vec = Vec::new();
+                block_vec.push(blk.hash());
+                let msg = Message::NewBlockHashes(block_vec);
+                self.server.broadcast(msg);
+                println!("insert success! {}, {}/{}", bc.get_length(), self.inserted, self.mined);
             }
 
-            // if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
-            //     println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
-            //     break
-            // }
+            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 360 {
+                println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
+                break
+            }
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {
