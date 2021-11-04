@@ -2,8 +2,7 @@ use std::borrow::Borrow;
 use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
 use std::collections::HashMap;
-use crate::block::generate_random_block;
-use ring::rand::SecureRandom;
+use crate::block::{generate_random_block, generate_genesis_block};
 
 #[derive(Debug)]
 pub struct Blockchain {
@@ -19,19 +18,14 @@ impl Blockchain {
         let mut blocks = HashMap::new();
         let mut blockchain = HashMap::new();
 
-        let sr = ring::rand::SystemRandom::new();
-        let mut result = [0u8; 32];
-        sr.fill(&mut result).unwrap();
-        let t = H256::from(result);
-        let genesis = generate_random_block(&t);
+        let genesis = generate_genesis_block(&H256::from([0u8; 32]));
 
-        let genesis2 = genesis.clone();
         let hashvalue = genesis.hash();
-        blocks.insert(hashvalue,(genesis,0));
-        blockchain.insert(hashvalue,genesis2);
+        blocks.insert(hashvalue,(genesis.clone(),0));
+        blockchain.insert(hashvalue,genesis.clone());
         Blockchain{
-            blockchain: blockchain,
-            blocks:blocks,
+            blockchain,
+            blocks,
             height: 0,
             tip: hashvalue
         }

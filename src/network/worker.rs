@@ -46,6 +46,9 @@ impl Context {
     }
 
     fn worker_loop(&self) {
+
+        let mut memory: HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
+
         loop {
             let msg = self.msg_chan.recv().unwrap();
             let (msg, peer) = msg;
@@ -71,12 +74,12 @@ impl Context {
                     if new_blocks.len()>0{
                         println!("ask for them by sending GetBlocks");
                         peer.write(Message::GetBlocks(new_blocks));
-                        
+
                     }
                 }
                 //if the hashes are in blockchain, you can get theses blocks and send them by Blocks message
                 Message::GetBlocks(hashes) =>{
-                    println!("reveived the request of ask foo sending getblocks");
+                    println!("reveived the request of ask for sending getblocks");
                     let mut blocks : Vec<Block> = Vec::new();
                     let blkchain =self.arc.lock().unwrap();
                     for hash in hashes{
@@ -88,18 +91,20 @@ impl Context {
                     if blocks.len()>0{
                         println!("sending blocks");
                         peer.write(Message::Blocks(blocks));
-                        
                     }
                 }
                 //for Blocks, insert the blocks into blockchain if not already in it
                 Message::Blocks(blocks)=>{
-                    let mut memory: HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
+                    for block in blocks.iter() {
+                        memory.insert(block.header.parent,block.clone());
+                    }
+
                     //don't find the parents of some blocks in #Block => #GetBlocks
                     //broadcast #NewBlockhashes when received onr from #Block
                     let mut new_hashes: Vec<H256> = Vec::new();
                     let mut no_parents :Vec::<H256> = Vec::new();
                     let mut blkchain =self.arc.lock().unwrap();
-                    for block in blocks {
+                    for block in blocks.iter() {
                         if !blkchain.blockchain.contains_key(&block.hash()){
                             let parent = &block.header.parent;
                             if blkchain.blockchain.contains_key(parent) && block.hash()<=block.header.difficulty{
@@ -113,10 +118,9 @@ impl Context {
                                     parent = new_parent;
                                     new_hashes.push(parent);
                                 }
-                            
+                                println!("insert success! bc height:{:?}", blkchain.height);
                             }else{
                                 if block.hash()<=block.header.difficulty{
-                                    memory.insert(block.header.parent,block.clone());
                                     no_parents.push(*parent);
                                 }
                             }

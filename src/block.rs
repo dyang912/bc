@@ -76,6 +76,36 @@ pub fn generate_random_block(parent: &H256) -> Block {
     blk
 }
 
+pub fn generate_genesis_block(parent: &H256) -> Block {
+    let parent_array: [u8; 32] = parent.into();
+
+    // init random difficulty
+    let mut result = [0u8; 32];
+    // let sr = ring::rand::SystemRandom::new();
+    // sr.fill(&mut result).unwrap(); // random difficulty
+    result[0] = 16;
+
+    // init random transactions
+    let trans:Vec<Transaction> = vec![
+        Transaction{ header: Default::default()},
+    ];
+
+    let merkle_tree = MerkleTree::new(&trans);
+    let root = merkle_tree.root();
+
+    let blk = Block::new(
+        H256::from(parent_array),
+        0,
+        H256::from(result),
+        0,
+        root,
+        trans,
+    );
+
+    //println!("{:?}", blk);
+    blk
+}
+
 #[cfg(any(test, test_utilities))]
 pub mod test {
     use super::*;
