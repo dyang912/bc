@@ -32,7 +32,7 @@ impl Blockchain {
     }
 
     /// Insert a block into blockchain
-    pub fn insert(&mut self, block: &Block) {
+    pub fn insert(&mut self, block: &Block) -> u32 {
         let newblock = block.clone();
         let parent = &newblock.header.parent;
         let mut nheight =0;
@@ -74,6 +74,7 @@ impl Blockchain {
             nheight = self.blocks.get(&parent).unwrap().1 +1;
         }
         self.blocks.insert(newblock.hash(), (block.clone(), nheight));
+        nheight
     }
 
     /// Get the last block's hash of the longest chain

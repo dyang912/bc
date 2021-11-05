@@ -118,16 +118,18 @@ impl Context {
                         if !blkchain.blockchain.contains_key(&block.hash()){
                             let new_block_parent = &block.header.parent;
                             if blkchain.blockchain.contains_key(new_block_parent) && block.hash() <= block.header.difficulty{
-                                blkchain.insert(&block.clone());
+                                let insert_height = blkchain.insert(&block.clone());
                                 memory.remove(&block.header.parent);
-                                println!("{:?} insert {:?}! bc height:{:?}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH), block.hash(), blkchain.height);
+                                let it = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+                                println!("{:?} insert {:?} at {:?}, bc height:{:?}", it, block.hash(), insert_height, blkchain.height);
                                 dic_new.insert(block.hash(), 1);
                                 // insert all children stored in memory
                                 let mut inserted: H256 = block.hash();
                                 while memory.contains_key(&inserted) {
                                     let next_insert = memory.get(&inserted).unwrap().clone();
-                                    blkchain.insert(&next_insert.clone());
-                                    println!("{:?} insert ch {:?}! bc height:{:?}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH), next_insert.hash(), blkchain.height);
+                                    let new_height = blkchain.insert(&next_insert.clone());
+                                    let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+                                    println!("{:?} insert ch {:?} at {:?}, bc height:{:?}", ts, next_insert.hash(), new_height, blkchain.height);
                                     memory.remove(&inserted);
                                     inserted = next_insert.hash();
                                     dic_new.insert(inserted, 1);

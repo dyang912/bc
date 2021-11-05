@@ -158,13 +158,14 @@ impl Context {
             //     println!("{:?} {}", difficulty, self.mined);
             // }
             if blk.hash() <= difficulty {
-                bc.insert(&blk);
+                let new_height = bc.insert(&blk);
                 self.inserted += 1;
                 let mut block_vec = Vec::new();
                 block_vec.push(blk.hash());
                 let msg = Message::NewBlockHashes(block_vec);
                 self.server.broadcast(msg);
-                println!("{:?} insert {:?}! length:{}, tried:{}/{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH), blk.hash(), bc.get_length(), self.inserted, self.mined);
+                let t = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+                println!("{:?} mined {:?} at {:?}, length:{}, tried:{}/{}", t, blk.hash(), new_height, bc.get_length(), self.inserted, self.mined);
             }
 
             if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 360 {
