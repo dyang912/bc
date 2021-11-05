@@ -38,21 +38,19 @@ impl Blockchain {
         let mut nheight =0;
 
         //The parent of the newly inserted block is the tip of the blockchain, insert new block directly
-        if parent == &self.tip{
+        if parent == &self.tip {
             self.tip = newblock.hash();
             self.height = self.height+1;
             nheight = self.height;
             self.blockchain.insert(self.tip, block.clone());
         //after insert this block, another branch becomes the longest chain
         } else if self.height < self.blocks.get(&parent).unwrap().1 +1 {
-            self.tip = newblock.hash();
             nheight = self.blocks.get(&parent).unwrap().1 +1;
             self.height = nheight;
             //update blockchain
             let mut new_chain: Vec<H256> = Vec::new(); //the last one element's parent is in the blockchain 
             let mut current_block = &newblock;
             let mut latest_parent = &current_block.header.parent;
-            new_chain.push(current_block.hash());
             while !self.blockchain.contains_key(&latest_parent){
                 current_block = &self.blocks.get(&latest_parent).unwrap().0;
                 latest_parent = &current_block.header.parent;  
@@ -69,12 +67,13 @@ impl Blockchain {
                 temp = self.blocks.get(&i).unwrap().0.clone();
                 self.blockchain.insert(*i, temp);
             }
+            self.tip = newblock.hash();
             self.blockchain.insert(self.tip, block.clone());
-        }else{ 
+        } else {
             //the blockchain doestn't change, only insert new block into blocks
             nheight = self.blocks.get(&parent).unwrap().1 +1;
         }
-        self.blocks.insert(newblock.hash(), (newblock,nheight));
+        self.blocks.insert(newblock.hash(), (block.clone(), nheight));
     }
 
     /// Get the last block's hash of the longest chain
@@ -88,6 +87,10 @@ impl Blockchain {
 
     pub fn get_length(&self) -> u32 {
         self.height
+    }
+
+    pub fn contain(&self, h:H256) -> bool {
+        self.blockchain.contains_key(&h)
     }
 
     /// Get all blocks' hash of the longest chain
@@ -104,7 +107,6 @@ impl Blockchain {
 #[cfg(any(test, test_utilities))]
 mod tests {
     use super::*;
-    use crate::block::test::generate_random_block;
     use crate::crypto::hash::Hashable;
 
     #[test]
@@ -116,4 +118,39 @@ mod tests {
         assert_eq!(blockchain.tip(), block.hash());
 
     }
+
+    #[test]
+      fn verify_several() {
+        let mut t : HashMap<i32, i32> = HashMap::new();
+        t.insert(1, 2);
+        t.insert(2, 3);
+        t.insert(3, 2);
+        t.insert(4, 1);
+        println!("----------{:?}", t.len());
+        let mut i = 1;
+        while t.contains_key(&i) {
+            let next = t.get(&i).unwrap().clone();
+            t.remove(&i);
+            i = next;
+        }
+        println!("----------{:?}", t.len());
+
+        let mut blockchain = Blockchain::new();
+        let genesis_hash = blockchain.tip();
+        let block = generate_random_block(&genesis_hash);
+        let block2 = generate_random_block(&genesis_hash);
+        let block3 = generate_random_block(&block2.hash());
+        let block4 = generate_random_block(&block.hash());
+        let block5 = generate_random_block(&block3.hash());
+        blockchain.insert(&block);
+        blockchain.insert(&block2);
+        blockchain.insert(&block3);
+        blockchain.insert(&block4);
+        blockchain.insert(&block5);
+        let result = blockchain.all_blocks_in_longest_chain();
+        for i in 0..result.len() {
+              println!("{}", result[i]);
+            }
+        assert_eq!(result, vec![ genesis_hash, block2.hash(), block3.hash(), block5.hash()]);
+      }
 }

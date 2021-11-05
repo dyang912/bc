@@ -164,7 +164,7 @@ impl Context {
                 block_vec.push(blk.hash());
                 let msg = Message::NewBlockHashes(block_vec);
                 self.server.broadcast(msg);
-                println!("insert success! {}, {}/{}", bc.get_length(), self.inserted, self.mined);
+                println!("{:?} insert {:?}! length:{}, tried:{}/{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH), blk.hash(), bc.get_length(), self.inserted, self.mined);
             }
 
             if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 360 {
