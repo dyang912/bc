@@ -1,13 +1,13 @@
 # Midterm Project, Part 3
 
-Due 11 PM, October 26, 2021
+Due 11 PM, November 4, 2021
 
 In this part of midterm project, you are going to implement the **network** module of Bitcoin client. The network module is in charge of communicating with other nodes/clients. It forms the peer-to-peer (p2p) network and uses gossip protocol to exchange data, including blocks and transactions. (Transactions will not be covered in this part.)
 
 ## Repository management and submission
 
-1. We suggest you to continue to work on your repo of midterm project. 
-2. Submit a report in pdf on Compass2g. Please don't submit code. One submission for one team is enough.
+1. We suggest you to continue to work on your repo of midterm project.
+2. Submit a report in pdf on Canvas. Please don't submit code. One submission for one team is enough.
 
 ## Code provided
 The following files are related to this assignment.
