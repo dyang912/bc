@@ -31,7 +31,7 @@ fn main() {
      (@arg peer_addr: --p2p [ADDR] default_value("127.0.0.1:6000") "Sets the IP address and the port of the P2P server")
      (@arg api_addr: --api [ADDR] default_value("127.0.0.1:7000") "Sets the IP address and the port of the API server")
      (@arg known_peer: -c --connect ... [PEER] "Sets the peers to connect to at start")
-     (@arg p2p_workers: --("p2p-workers") [INT] default_value("4") "Sets the number of worker threads for P2P server")
+     (@arg p2p_workers: --("p2p-workers") [INT] default_value("1") "Sets the number of worker threads for P2P server")
     )
     .get_matches();
 

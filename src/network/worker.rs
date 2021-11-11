@@ -50,12 +50,13 @@ impl Context {
 
         let mut memory:HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
         let mut total_delay:u128 = 0;
-        let mut reveived:u128 = 0;
+        let mut recevied:u128 = 0;
 
         loop {
             let msg = self.msg_chan.recv().unwrap();
             let (msg, peer) = msg;
             let msg: Message = bincode::deserialize(&msg).unwrap();
+            let mut blkchain =self.arc.lock().unwrap();
             match msg {
                 Message::Ping(nonce) => {
                     debug!("Ping: {}", nonce);
@@ -66,36 +67,24 @@ impl Context {
                 }
                 //For NewBlockHashes, if the hashes are not already in blockchain, you need to ask for them by sending GetBlocks.
                 Message::NewBlockHashes(hashes) => {
-                    let mut dic: HashMap<H256, u32> = HashMap::new();
-                    let blkchain =self.arc.lock().unwrap();
-
+                    let mut need_parent = Vec::new();
                     for hash in hashes{
-                        if !blkchain.blockchain.contains_key(&hash){
-                            dic.insert(hash, 1);
+                        if !blkchain.blocks.contains_key(&hash){
+                            need_parent.push(hash.clone());
                         }
                     }
-
-                    if dic.len()>0{
-                        let mut new_blocks: Vec<H256>= Vec::new();
-                        for item in dic {
-                            new_blocks.push(item.0);
-                        }
-                        peer.write(Message::GetBlocks(new_blocks));
+                    if need_parent.len()>0{
+                        peer.write(Message::GetBlocks(need_parent));
                     }
                 }
                 //if the hashes are in blockchain, you can get theses blocks and send them by Blocks message
                 Message::GetBlocks(hashes) =>{
-                    let mut dic: HashMap<H256, u32> = HashMap::new();
-                    for hash in hashes{
-                        dic.insert(hash, 1);
-                    }
                     let mut blocks : Vec<Block> = Vec::new();
-                    let blkchain =self.arc.lock().unwrap();
-                    for item in dic{
-                        let hash = item.0;
-                        if blkchain.blockchain.contains_key(&hash){
-                            let temp = blkchain.blockchain.get(&hash).unwrap().clone();
-                            blocks.push(temp);
+                    for item in hashes {
+                        let hash = item;
+                        if blkchain.blocks.contains_key(&hash){
+                            let temp = blkchain.blocks.get(&hash).unwrap().clone();
+                            blocks.push(temp.0);
                         }
                     }
                     if blocks.len()>0{
@@ -106,30 +95,29 @@ impl Context {
                 Message::Blocks(blocks)=>{
                     //don't find the parents of some blocks in #Block => #GetBlocks
                     //broadcast #NewBlockhashes when received onr from #Block
-                    let mut dic_new: HashMap<H256, u32> = HashMap::new();
-                    let mut dic_no_parent: HashMap<H256, u32> = HashMap::new();
-                    let mut blkchain =self.arc.lock().unwrap();
+                    let mut new_blocks = Vec::new();
+                    let mut need_parent = Vec::new();
                     let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
 
                     for block in blocks.iter() {
-                        if !blkchain.contain(block.hash()) {
+                        if !blkchain.blocks.contains_key(&block.hash()) {
                             memory.insert(block.header.parent,block.clone());
                             total_delay += ts.as_millis() - block.header.get_create_time();
-                            reveived += 1;
+                            recevied += 1;
                         }
                     }
 
                     for block in blocks.iter() {
-                        if !blkchain.blockchain.contains_key(&block.hash()){
+                        if !blkchain.blocks.contains_key(&block.hash()){
                             let new_block_parent = &block.header.parent;
                             // PoW validity check
                             if block.hash() <= block.header.difficulty {
                                 // Parent check
-                                if blkchain.blockchain.contains_key(new_block_parent) &&
-                                    block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
+                                if blkchain.blocks.contains_key(new_block_parent) &&
+                                    block.hash() < blkchain.blocks.get(new_block_parent).unwrap().0.header.difficulty {
                                     blkchain.insert(&block.clone());
                                     memory.remove(&block.header.parent);
-                                    dic_new.insert(block.hash(), 1);
+                                    new_blocks.push(block.hash().clone());
 
                                     // Orphan block handler: insert validated blocks stored in memory
                                     let mut inserted: H256 = block.hash();
@@ -138,29 +126,21 @@ impl Context {
                                         blkchain.insert(&next_insert.clone());
                                         memory.remove(&inserted);
                                         inserted = next_insert.hash();
-                                        dic_new.insert(inserted, 1);
+                                        new_blocks.push(inserted.clone());
                                     }
                                 } else {
-                                    dic_no_parent.insert(*new_block_parent, 1);
+                                    need_parent.push(new_block_parent.clone());
+                                    peer.write(Message::GetBlocks(need_parent.clone()));
                                 }
                             }
                         }  
                     }
-                    if dic_new.len()>0{
-                        let mut new_hashes: Vec<H256> = Vec::new();
-                        for item in dic_new {
-                            new_hashes.push(item.0);
-                        }
-                        self.server.broadcast(Message::NewBlockHashes(new_hashes));
+                    if new_blocks.len()>0{
+                        self.server.broadcast(Message::NewBlockHashes(new_blocks));
                     }
-                    if dic_no_parent.len()>0{
-                        let mut no_parents :Vec::<H256> = Vec::new();
-                        for item in dic_no_parent {
-                            no_parents.push(item.0);
-                        }
-                        peer.write(Message::GetBlocks(no_parents));
+                    if recevied > 0 {
+                        println!("avg delay:{:?}/{:?}={:?}", total_delay, recevied, total_delay / recevied);
                     }
-                    println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
                 }
             }
         }
