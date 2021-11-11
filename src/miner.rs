@@ -109,6 +109,7 @@ impl Context {
     }
 
     fn miner_loop(&mut self) {
+        let mut mined_size:usize = 0;
         // main mining loop
         loop {
             // check and react to control signals
@@ -158,17 +159,22 @@ impl Context {
             //     println!("{:?} {}", difficulty, self.mined);
             // }
             if blk.hash() <= difficulty {
-                let new_height = bc.insert(&blk);
+                bc.insert(&blk);
                 self.inserted += 1;
+
+                // broadcast to peers
                 let mut block_vec = Vec::new();
                 block_vec.push(blk.hash());
                 let msg = Message::NewBlockHashes(block_vec);
                 self.server.broadcast(msg);
-                let t = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-                println!("{:?} mined {:?} at {:?}, length:{}, tried:{}/{}", t, blk.hash(), new_height, bc.get_length(), self.inserted, self.mined);
+
+                mined_size += serde_json::to_string(&blk).unwrap().len();
+                if self.inserted % 100 == 0 {
+                    println!("avg block size:{:?}", mined_size as u32/self.mined);
+                }
             }
 
-            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 360 {
+            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
                 println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
                 break
             }

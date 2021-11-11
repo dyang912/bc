@@ -27,6 +27,12 @@ impl Hashable for Header {
     }
 }
 
+impl Header {
+    pub fn get_create_time(&self) -> u128 {
+        self.timestamp
+    }
+}
+
 impl Hashable for Block {
     fn hash(&self) -> H256 {
         self.header.hash()

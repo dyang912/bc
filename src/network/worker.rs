@@ -8,7 +8,6 @@ use crate::block::Block;
 use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
 use crate::blockchain::Blockchain;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use std::thread;
 
@@ -48,7 +47,8 @@ impl Context {
 
     fn worker_loop(&self) {
 
-        let mut memory: HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
+        let mut memory:HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
+        let mut total_delay:u128 = 0;
 
         loop {
             let msg = self.msg_chan.recv().unwrap();
@@ -117,25 +117,27 @@ impl Context {
                     for block in blocks.iter() {
                         if !blkchain.blockchain.contains_key(&block.hash()){
                             let new_block_parent = &block.header.parent;
-                            if blkchain.blockchain.contains_key(new_block_parent) && block.hash() <= block.header.difficulty{
-                                let insert_height = blkchain.insert(&block.clone());
-                                memory.remove(&block.header.parent);
-                                let it = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-                                println!("{:?} insert {:?} at {:?}, bc height:{:?}", it, block.hash(), insert_height, blkchain.height);
-                                dic_new.insert(block.hash(), 1);
-                                // insert all children stored in memory
-                                let mut inserted: H256 = block.hash();
-                                while memory.contains_key(&inserted) {
-                                    let next_insert = memory.get(&inserted).unwrap().clone();
-                                    let new_height = blkchain.insert(&next_insert.clone());
-                                    let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-                                    println!("{:?} insert ch {:?} at {:?}, bc height:{:?}", ts, next_insert.hash(), new_height, blkchain.height);
-                                    memory.remove(&inserted);
-                                    inserted = next_insert.hash();
-                                    dic_new.insert(inserted, 1);
+                            // PoW validity check
+                            if block.hash() <= block.header.difficulty {
+                                // Parent check
+                                if blkchain.blockchain.contains_key(new_block_parent) &&
+                                    block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
+                                    total_delay += blkchain.insert(&block.clone());
+                                    memory.remove(&block.header.parent);
+                                    dic_new.insert(block.hash(), 1);
+
+                                    // Orphan block handler: insert validated blocks stored in memory
+                                    let mut inserted: H256 = block.hash();
+                                    while memory.contains_key(&inserted) {
+                                        let next_insert = memory.get(&inserted).unwrap().clone();
+                                        total_delay += blkchain.insert(&next_insert.clone());
+                                        memory.remove(&inserted);
+                                        inserted = next_insert.hash();
+                                        dic_new.insert(inserted, 1);
+                                    }
+                                } else {
+                                    dic_no_parent.insert(*new_block_parent, 1);
                                 }
-                            } else if block.hash()<=block.header.difficulty {
-                                dic_no_parent.insert(*new_block_parent, 1);
                             }
                         }  
                     }
@@ -153,8 +155,9 @@ impl Context {
                         }
                         peer.write(Message::GetBlocks(no_parents));
                     }
-                }
 
+                    println!("avg delay:{:?}", total_delay / blkchain.get_block_num());
+                }
             }
         }
     }

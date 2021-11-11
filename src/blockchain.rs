@@ -3,13 +3,15 @@ use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
 use std::collections::HashMap;
 use crate::block::{generate_random_block, generate_genesis_block};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub struct Blockchain {
     pub blockchain: HashMap<H256,Block>, //blocks in the blockchain
     blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block
-    pub height: u32,
-    tip: H256
+    height: u32,
+    tip: H256,
+    block_num:u128,
 }
 
 impl Blockchain {
@@ -27,12 +29,13 @@ impl Blockchain {
             blockchain,
             blocks,
             height: 0,
-            tip: hashvalue
+            tip: hashvalue,
+            block_num: 0
         }
     }
 
     /// Insert a block into blockchain
-    pub fn insert(&mut self, block: &Block) -> u32 {
+    pub fn insert(&mut self, block: &Block) -> u128 {
         let newblock = block.clone();
         let parent = &newblock.header.parent;
         let mut nheight =0;
@@ -71,10 +74,15 @@ impl Blockchain {
             self.blockchain.insert(self.tip, block.clone());
         } else {
             //the blockchain doestn't change, only insert new block into blocks
-            nheight = self.blocks.get(&parent).unwrap().1 +1;
+            nheight = self.blocks.get(&parent).unwrap().1 + 1;
         }
         self.blocks.insert(newblock.hash(), (block.clone(), nheight));
-        nheight
+        self.block_num += 1;
+
+        let it = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        println!("{:?} insert {:?} at {:?}, bc height:{:?}", it, block.hash(), nheight, self.height);
+
+        it.as_millis() - block.header.get_create_time()
     }
 
     /// Get the last block's hash of the longest chain
@@ -88,6 +96,10 @@ impl Blockchain {
 
     pub fn get_length(&self) -> u32 {
         self.height
+    }
+
+    pub fn get_block_num(&self) ->u128 {
+        self.block_num
     }
 
     pub fn contain(&self, h:H256) -> bool {
