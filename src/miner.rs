@@ -1,11 +1,10 @@
-use std::ops::Sub;
 use crate::network::server::Handle as ServerHandle;
 use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
 use crate::block::Block;
 use crate::crypto::merkle::MerkleTree;
 use crate::transaction::{Transaction, generate_random_transaction};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 use rand::Rng;
 use crate::network::message::Message;
 
@@ -139,7 +138,7 @@ impl Context {
             let parent = bc.tip();
 
             // get timestamp
-            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+            let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
 
             // get difficulty
             let difficulty = bc.get_difficulty();
@@ -176,6 +175,7 @@ impl Context {
 
             if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
                 println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
+                println!("========== avg block size:{:?}/{:?}={:?}", mined_size, self.inserted, mined_size as u32/self.inserted);
                 break
             }
 

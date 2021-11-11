@@ -10,6 +10,7 @@ use crate::crypto::hash::{H256, Hashable};
 use crate::blockchain::Blockchain;
 
 use std::thread;
+use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct Context {
@@ -49,6 +50,7 @@ impl Context {
 
         let mut memory:HashMap<H256,Block>= HashMap::new(); // parent's hash and dangling block
         let mut total_delay:u128 = 0;
+        let mut reveived:u128 = 0;
 
         loop {
             let msg = self.msg_chan.recv().unwrap();
@@ -107,10 +109,13 @@ impl Context {
                     let mut dic_new: HashMap<H256, u32> = HashMap::new();
                     let mut dic_no_parent: HashMap<H256, u32> = HashMap::new();
                     let mut blkchain =self.arc.lock().unwrap();
+                    let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
 
                     for block in blocks.iter() {
                         if !blkchain.contain(block.hash()) {
                             memory.insert(block.header.parent,block.clone());
+                            total_delay += ts.as_millis() - block.header.get_create_time();
+                            reveived += 1;
                         }
                     }
 
@@ -122,7 +127,7 @@ impl Context {
                                 // Parent check
                                 if blkchain.blockchain.contains_key(new_block_parent) &&
                                     block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
-                                    total_delay += blkchain.insert(&block.clone());
+                                    blkchain.insert(&block.clone());
                                     memory.remove(&block.header.parent);
                                     dic_new.insert(block.hash(), 1);
 
@@ -130,7 +135,7 @@ impl Context {
                                     let mut inserted: H256 = block.hash();
                                     while memory.contains_key(&inserted) {
                                         let next_insert = memory.get(&inserted).unwrap().clone();
-                                        total_delay += blkchain.insert(&next_insert.clone());
+                                        blkchain.insert(&next_insert.clone());
                                         memory.remove(&inserted);
                                         inserted = next_insert.hash();
                                         dic_new.insert(inserted, 1);
@@ -155,8 +160,7 @@ impl Context {
                         }
                         peer.write(Message::GetBlocks(no_parents));
                     }
-
-                    println!("avg delay:{:?}", total_delay / blkchain.get_block_num());
+                    println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
                 }
             }
         }

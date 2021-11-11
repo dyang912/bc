@@ -1,6 +1,5 @@
-use crate::crypto::{key_pair, merkle::MerkleTree, hash::{H256, Hashable}};
+use crate::crypto::{merkle::MerkleTree, hash::{H256, Hashable}};
 use crate::transaction::{Transaction, generate_random_transaction};
-use ring::rand::SecureRandom;
 use serde::{Serialize, Deserialize};
 use rand::Rng;
 use std::time::{SystemTime, UNIX_EPOCH};

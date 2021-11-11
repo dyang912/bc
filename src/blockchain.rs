@@ -2,8 +2,8 @@ use std::borrow::Borrow;
 use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
 use std::collections::HashMap;
-use crate::block::{generate_random_block, generate_genesis_block};
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::block::generate_genesis_block;
+use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct Blockchain {
@@ -38,7 +38,7 @@ impl Blockchain {
     pub fn insert(&mut self, block: &Block) -> u128 {
         let newblock = block.clone();
         let parent = &newblock.header.parent;
-        let mut nheight =0;
+        let nheight;
 
         //The parent of the newly inserted block is the tip of the blockchain, insert new block directly
         if parent == &self.tip {
@@ -79,10 +79,10 @@ impl Blockchain {
         self.blocks.insert(newblock.hash(), (block.clone(), nheight));
         self.block_num += 1;
 
-        let it = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-        println!("{:?} insert {:?} at {:?}, bc height:{:?}", it, block.hash(), nheight, self.height);
+        let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        println!("{:?} insert {:?} at {:?}, bc height:{:?}", ts, block.hash(), nheight, self.height);
 
-        it.as_millis() - block.header.get_create_time()
+        ts.as_millis() - block.header.get_create_time()
     }
 
     /// Get the last block's hash of the longest chain
@@ -121,6 +121,7 @@ impl Blockchain {
 mod tests {
     use super::*;
     use crate::crypto::hash::Hashable;
+    use crate::block::generate_random_block;
 
     #[test]
     fn insert_one() {
