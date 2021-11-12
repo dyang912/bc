@@ -70,7 +70,7 @@ impl Context {
                     let blkchain =self.arc.lock().unwrap();
 
                     for hash in hashes{
-                        if !blkchain.blockchain.contains_key(&hash){
+                        if !blkchain.blocks.contains_key(&hash){
                             dic.insert(hash, 1);
                         }
                     }
@@ -93,9 +93,9 @@ impl Context {
                     let blkchain =self.arc.lock().unwrap();
                     for item in dic{
                         let hash = item.0;
-                        if blkchain.blockchain.contains_key(&hash){
-                            let temp = blkchain.blockchain.get(&hash).unwrap().clone();
-                            blocks.push(temp);
+                        if blkchain.blocks.contains_key(&hash){
+                            let temp = blkchain.blocks.get(&hash).unwrap().clone();
+                            blocks.push(temp.0);
                         }
                     }
                     if blocks.len()>0{
@@ -112,21 +112,19 @@ impl Context {
                     let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
 
                     for block in blocks.iter() {
-                        if !blkchain.contain(block.hash()) {
-                            memory.insert(block.header.parent,block.clone());
+                        if !blkchain.blocks.contains_key(&block.hash()){
+                            let new_block_parent = &block.header.parent;
+                            memory.insert(*new_block_parent,block.clone());
                             total_delay += ts.as_millis() - block.header.get_create_time();
                             reveived += 1;
-                        }
-                    }
-
-                    for block in blocks.iter() {
-                        if !blkchain.blockchain.contains_key(&block.hash()){
-                            let new_block_parent = &block.header.parent;
                             // PoW validity check
                             if block.hash() <= block.header.difficulty {
                                 // Parent check
-                                if blkchain.blockchain.contains_key(new_block_parent) &&
-                                    block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
+                                if blkchain.blocks.contains_key(new_block_parent) {
+                                    if(block.header.difficulty!= blkchain.blocks.get(new_block_parent).unwrap().0.header.difficulty){
+                                        continue;
+                                    }
+                                    // block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
                                     blkchain.insert(&block.clone());
                                     memory.remove(&block.header.parent);
                                     dic_new.insert(block.hash(), 1);
@@ -160,7 +158,9 @@ impl Context {
                         }
                         peer.write(Message::GetBlocks(no_parents));
                     }
-                    println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
+                    if reveived>0{
+                        println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
+                    }
                 }
             }
         }

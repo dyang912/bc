@@ -8,7 +8,7 @@ use std::time::SystemTime;
 #[derive(Debug)]
 pub struct Blockchain {
     pub blockchain: HashMap<H256,Block>, //blocks in the blockchain
-    blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block
+    pub blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block
     height: u32,
     tip: H256,
     block_num:u128,
