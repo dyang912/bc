@@ -1,7 +1,7 @@
-use serde::{Serialize,Deserialize};
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
-use crate::transaction::SignedTrans;
+use crate::signedtrans::SignedTrans;
 
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -29,7 +29,7 @@ impl Mempool {
         let map = self.clone().pool;
         let hash = signed.hash();
         if map.contains_key(&hash) {
-            let res = self.pool.remove(&hash);
+            self.pool.remove(&hash);
         }
         return
     }

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
 use crate::block::Block;
 use crate::crypto::merkle::MerkleTree;
-use crate::transaction::{Transaction,SignedTrans, generate_random_signedtrans};
+use crate::signedtrans::{SignedTrans, generate_random_signedtrans};
 use std::time::SystemTime;
 use rand::Rng;
 use crate::network::message::Message;

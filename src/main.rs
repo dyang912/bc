@@ -9,6 +9,9 @@ pub mod crypto;
 pub mod miner;
 pub mod network;
 pub mod transaction;
+mod signedtrans;
+mod mempool;
+mod state;
 
 use clap::clap_app;
 use crossbeam::channel;
@@ -21,6 +24,7 @@ use std::thread;
 use std::time;
 use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
+use crate::mempool::Mempool;
 
 fn main() {
     // parse command line arguments
@@ -76,19 +80,20 @@ fn main() {
             process::exit(1);
         });
 
-    let lock = Arc::new(Mutex::new(Blockchain::new()));
+    let bc = Arc::new(Mutex::new(Blockchain::new()));
+    let mem_pool = Arc::new(Mutex::new(Mempool::new()));
     let worker_ctx = worker::new(
         p2p_workers,
         msg_rx,
         &server,
-        &lock
-        
+        &bc,
+        &mem_pool
     );
     worker_ctx.start();
 
     // start the miner
     let (miner_ctx, miner) = miner::new(
-        &server, &lock
+        &server, &bc
     );
     miner_ctx.start();
 

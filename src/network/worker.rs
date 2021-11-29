@@ -4,11 +4,13 @@ use crate::network::server::Handle as ServerHandle;
 use crossbeam::channel;
 use log::{debug, warn};
 use std::sync::{Arc, Mutex};
-use crate::block::Block;
 use std::collections::HashMap;
+use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
 use crate::blockchain::Blockchain;
-use crate::transaction::Mempool;
+use crate::signedtrans::{SignedTrans};
+use crate::transaction::verify;
+use crate::mempool::Mempool;
 
 use std::thread;
 use std::time::SystemTime;
@@ -18,21 +20,23 @@ pub struct Context {
     msg_chan: channel::Receiver<(Vec<u8>, peer::Handle)>,
     num_worker: usize,
     server: ServerHandle,
-    arc: Arc<Mutex<Blockchain>>,
-
+    bc: Arc<Mutex<Blockchain>>,
+    mem_pool: Arc<Mutex<Mempool>>,
 }
 
 pub fn new(
     num_worker: usize,
     msg_src: channel::Receiver<(Vec<u8>, peer::Handle)>,
     server: &ServerHandle,
-    arc: &Arc<Mutex<Blockchain>>
+    bc: &Arc<Mutex<Blockchain>>,
+    mem_pool: &Arc<Mutex<Mempool>>
 ) -> Context {
     Context {
         msg_chan: msg_src,
         num_worker,
         server: server.clone(),
-        arc: Arc::clone(arc),
+        bc: Arc::clone(bc),
+        mem_pool: Arc::clone(mem_pool),
     }
 }
 
@@ -69,7 +73,7 @@ impl Context {
                 //For NewBlockHashes, if the hashes are not already in blockchain, you need to ask for them by sending GetBlocks.
                 Message::NewBlockHashes(hashes) => {
                     let mut dic: HashMap<H256, u32> = HashMap::new();
-                    let blkchain =self.arc.lock().unwrap();
+                    let blkchain =self.bc.lock().unwrap();
 
                     for hash in hashes{
                         if !blkchain.blocks.contains_key(&hash){
@@ -92,7 +96,7 @@ impl Context {
                         dic.insert(hash, 1);
                     }
                     let mut blocks : Vec<Block> = Vec::new();
-                    let blkchain =self.arc.lock().unwrap();
+                    let blkchain =self.bc.lock().unwrap();
                     for item in dic{
                         let hash = item.0;
                         if blkchain.blocks.contains_key(&hash){
@@ -110,7 +114,7 @@ impl Context {
                     //broadcast #NewBlockhashes when received onr from #Block
                     let mut dic_new: HashMap<H256, u32> = HashMap::new();
                     let mut dic_no_parent: HashMap<H256, u32> = HashMap::new();
-                    let mut blkchain =self.arc.lock().unwrap();
+                    let mut blkchain =self.bc.lock().unwrap();
                     let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
 
                     for block in blocks.iter() {
@@ -123,7 +127,7 @@ impl Context {
                             if block.hash() <= block.header.difficulty {
                                 // Parent check
                                 if blkchain.blocks.contains_key(new_block_parent) {
-                                    if(block.header.difficulty!= blkchain.blocks.get(new_block_parent).unwrap().0.header.difficulty){
+                                    if block.header.difficulty!= blkchain.blocks.get(new_block_parent).unwrap().0.header.difficulty {
                                         continue;
                                     }
                                     // block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
@@ -163,6 +167,71 @@ impl Context {
                     if reveived>0{
                         println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
                     }
+                }
+
+                Message::NewTransactionHashes(tx_hash) => {
+                    println!("NewTransactionHashes");
+                    // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
+
+                    let mut new_tx_hashes:Vec<H256> = Vec::new();
+                    let mem_pool = self.mem_pool.lock().unwrap();
+                    for hash in tx_hash{
+                        if !mem_pool.pool.contains_key(&hash){
+                            new_tx_hashes.push(hash);
+                        }
+                    }
+                    if !new_tx_hashes.is_empty(){
+                        peer.write(Message::GetTransactions(new_tx_hashes));
+                    }
+                }
+
+                Message::GetTransactions(tx_hash) => {
+                    println!("Received a GetTransactions message");
+                    // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
+
+                    let mut new_tx:Vec<SignedTrans> = Vec::new();
+                    let mem_pool = self.mem_pool.lock().unwrap();
+                    // let pool = mem_pool.get_pool().clone();
+                    for hash in tx_hash{
+                        if mem_pool.pool.contains_key(&hash){
+                            let signed_tx = mem_pool.pool.get(&hash).unwrap().clone();
+                            new_tx.push(signed_tx);
+                        }
+                    }
+                    if ! new_tx.is_empty(){
+                        peer.write(Message::Transactions(new_tx));
+                    }
+                }
+
+                Message::Transactions(txes) => {
+                    println!("Transaction");
+                    // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
+                    let mem_pool = self.mem_pool.lock().unwrap().clone();
+                    let mut new_tx_hashes = Vec::new();
+                    let mut chain = self.bc.lock().unwrap();
+                    // let mut pool = mem_pool.get_pool();
+                    let pool = mem_pool.pool.clone();
+                    for tx in txes{
+                        if !pool.contains_key(&tx.hash()){
+                            let pub_key = tx.get_public_key();
+                            let trans = tx.get_tx();
+                            let sig = tx.get_sig();
+                            let is_verified = verify(&trans, &pub_key, &sig);
+                            let is_over_spend = trans.output_val() > trans.input_val();
+                            if is_verified && !(is_over_spend) {
+                                let buf = tx.clone();
+                                self.mem_pool.lock().unwrap().pool.insert(tx.hash(), buf);
+                                new_tx_hashes.push(tx.hash());
+                                chain.update_state(&tx.transaction);
+                            }
+                        }
+                    }
+                    drop(chain);
+                    if !new_tx_hashes.is_empty() {
+                        self.server.broadcast(Message::NewTransactionHashes(new_tx_hashes));
+                    }
+
+
                 }
             }
         }

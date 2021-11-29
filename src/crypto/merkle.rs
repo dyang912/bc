@@ -29,8 +29,19 @@ fn duplicate_last_node(nodes: &mut Vec<Option<MerkleTreeNode>>) {
 
 impl MerkleTree {
     pub fn new<T>(data: &[T]) -> Self where T: Hashable, {
-        assert!(!data.is_empty());
-
+        if data.is_empty(){
+            let input = [0;32];
+            let val = super::hash::H256::from(input);
+            let n = MerkleTreeNode {
+                hash: val,
+                left: None,
+                right: None,
+            };
+            return MerkleTree {
+                root: n,
+                level_count: 0
+            };
+        }
         // create the leaf nodes:
         let mut curr_level: Vec<Option<MerkleTreeNode>> = Vec::new();
         for item in data {

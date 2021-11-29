@@ -1,9 +1,11 @@
 use std::borrow::Borrow;
+use std::collections::HashMap;
+use std::time::SystemTime;
 use crate::block::Block;
 use crate::crypto::hash::{H256, Hashable};
-use std::collections::HashMap;
 use crate::block::generate_genesis_block;
-use std::time::SystemTime;
+use crate::transaction::Transaction;
+use crate::state::State;
 
 #[derive(Debug)]
 pub struct Blockchain {
@@ -12,6 +14,7 @@ pub struct Blockchain {
     height: u32,
     tip: H256,
     block_num:u128,
+    pub current_state: State,
 }
 
 impl Blockchain {
@@ -30,7 +33,8 @@ impl Blockchain {
             blocks,
             height: 0,
             tip: hashvalue,
-            block_num: 0
+            block_num: 0,
+            current_state: State::new()
         }
     }
 
@@ -85,6 +89,24 @@ impl Blockchain {
         ts.as_millis() - block.header.get_create_time()
     }
 
+    pub fn update_state(&mut self, transaction:&Transaction) {
+        // let hash = block.hash();
+        // self.block_state.insert(hash, State::new());
+        // return
+        let mut st = self.current_state.clone().map;
+        let mut collection = HashMap::new();
+        let vec_in = transaction.inputs.clone();
+        for tx_in in vec_in {
+            collection.insert(tx_in.previous_hash,tx_in);
+        }
+        for (hash,_) in st.clone() {
+            if collection.contains_key(&hash){
+                st.remove(&hash);
+            }
+        }
+        self.current_state = State{map:st};
+    }
+
     /// Get the last block's hash of the longest chain
     pub fn tip(&self) -> H256 {
         self.tip
@@ -105,6 +127,7 @@ impl Blockchain {
     pub fn contain(&self, h:H256) -> bool {
         self.blockchain.contains_key(&h)
     }
+
 
     /// Get all blocks' hash of the longest chain
     #[cfg(any(test, test_utilities))]
