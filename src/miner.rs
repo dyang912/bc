@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
 use crate::block::Block;
 use crate::crypto::merkle::MerkleTree;
-use crate::transaction::{Transaction, generate_random_transaction};
+use crate::transaction::{Transaction,SignedTrans, generate_random_signedtrans};
 use std::time::SystemTime;
 use rand::Rng;
 use crate::network::message::Message;
@@ -144,7 +144,7 @@ impl Context {
             let difficulty = bc.get_difficulty();
 
             // generate merkle root
-            let trans:Vec<Transaction> = vec![generate_random_transaction().into()];
+            let trans:Vec<SignedTrans> = vec![generate_random_signedtrans().into()];
             let merkle_tree = MerkleTree::new(&trans);
             let root = merkle_tree.root();
 

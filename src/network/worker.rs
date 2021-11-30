@@ -8,6 +8,7 @@ use crate::block::Block;
 use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
 use crate::blockchain::Blockchain;
+use crate::transaction::Mempool;
 
 use std::thread;
 use std::time::SystemTime;
@@ -18,6 +19,7 @@ pub struct Context {
     num_worker: usize,
     server: ServerHandle,
     arc: Arc<Mutex<Blockchain>>,
+
 }
 
 pub fn new(
