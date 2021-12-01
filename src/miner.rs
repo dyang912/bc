@@ -155,7 +155,7 @@ impl Context {
                 //     break;
                 // }
                 trans.push(val);
-                self.mp.lock().unwrap().pool.remove(&hash);
+                self.mp.lock().unwrap().pool.remove(&hash);  // TODO: currently its wrong !!!
                 // cnt += 1;
             }
             drop(mp);
@@ -168,13 +168,14 @@ impl Context {
             let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
 
             self.mined += 1;
-            // if self.mined % 100 == 0 {
-            //     println!("{:?} {}", difficulty, self.mined);
-            // }
+            if self.mined % 1000 == 0 {
+                println!("{:?} {}", difficulty, self.mined);
+            }
             if blk.hash() <= difficulty {
                 bc.insert(&blk);
                 self.inserted += 1;
 
+                println!("{:?}", blk);
                 // broadcast to peers
                 let mut block_vec = Vec::new();
                 block_vec.push(blk.hash());
@@ -187,7 +188,7 @@ impl Context {
                 }
             }
 
-            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
+            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 300 {
                 println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
                 println!("========== avg block size:{:?}/{:?}={:?}", mined_size, self.inserted, mined_size as u32/self.inserted);
                 break

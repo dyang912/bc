@@ -7,7 +7,7 @@ use crate::block::generate_genesis_block;
 use crate::transaction::Transaction;
 use crate::state::State;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Blockchain {
     pub blockchain: HashMap<H256,Block>, //blocks in the blockchain
     pub blocks: HashMap<H256,(Block,u32)>, //all blocks in the network, u32 refers to the height of that block

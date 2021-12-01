@@ -86,17 +86,17 @@ impl Context {
                 self.miner_loop();
             })
             .unwrap();
-        info!("Miner initialized into paused mode");
+        info!("Generator initialized into paused mode");
     }
 
     fn handle_control_signal(&mut self, signal: ControlSignal) {
         match signal {
             ControlSignal::Exit => {
-                info!("Miner shutting down");
+                info!("Generator shutting down");
                 self.operating_state = OperatingState::ShutDown;
             }
             ControlSignal::Start(i) => {
-                info!("Miner starting in continuous mode with lambda {}", i);
+                info!("Generator starting in continuous mode with lambda {}", i);
                 self.start_time = SystemTime::now();
                 // println!("---------- start :{:?}", SystemTime::now());
                 self.operating_state = OperatingState::Run(i);
@@ -131,14 +131,18 @@ impl Context {
             }
 
             // get blockchain state
+            let bc = self.bc.lock().unwrap().clone();
+            let state = bc.current_state;
 
-            // generate trans (may be invalid)
+            // generate trans using state (may be invalid)
             let trans = generate_random_signedtrans();
 
             // get mempool
-            let mp = self.mp.lock().unwrap().clone().pool;
+            let mut mp = self.mp.lock().unwrap();
 
             // add to mempool
+            mp.add(&trans);
+            drop(mp);
 
             // broadcast
             let msg = Message::NewTransactionHashes(vec![trans.hash()]);

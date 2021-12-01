@@ -88,7 +88,7 @@ pub fn generate_genesis_block(parent: &H256) -> Block {
     let mut result = [0u8; 32];
     // let sr = ring::rand::SystemRandom::new();
     // sr.fill(&mut result).unwrap(); // random difficulty
-    result[0] = 1;
+    result[1] = 16;
 
     let data:Vec<SignedTrans> = Vec::new();
     let merkle_tree = MerkleTree::new(&data);
