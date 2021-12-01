@@ -12,6 +12,7 @@ pub mod transaction;
 mod signedtrans;
 mod mempool;
 mod state;
+mod generator;
 
 use clap::clap_app;
 use crossbeam::channel;
@@ -93,9 +94,19 @@ fn main() {
 
     // start the miner
     let (miner_ctx, miner) = miner::new(
-        &server, &bc
+        &server,
+        &bc,
+        &mem_pool
     );
     miner_ctx.start();
+
+    // start the generator
+    let (generator_ctx, generator) = generator::new(
+        &server,
+        &bc,
+        &mem_pool
+    );
+    generator_ctx.start();
 
     // connect to known peers
     if let Some(known_peers) = matches.values_of("known_peer") {
@@ -135,6 +146,7 @@ fn main() {
     ApiServer::start(
         api_addr,
         &miner,
+        &generator,
         &server,
     );
 

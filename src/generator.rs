@@ -1,11 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use rand::Rng;
 use crate::network::server::Handle as ServerHandle;
 use crate::blockchain::Blockchain;
-use crate::block::Block;
-use crate::crypto::merkle::MerkleTree;
-use crate::signedtrans::SignedTrans;
+use crate::signedtrans::generate_random_signedtrans;
 use crate::network::message::Message;
 use crate::mempool::Mempool;
 
@@ -36,13 +33,11 @@ pub struct Context {
     server: ServerHandle,
     bc: Arc<Mutex<Blockchain>>,
     mp: Arc<Mutex<Mempool>>,
-    mined: u32,
-    inserted: u32,
     start_time: SystemTime,
 }
 
 #[derive(Clone)]
-pub struct Handle {
+pub struct Generator {
     /// Channel for sending signal to the miner thread
     control_chan: Sender<ControlSignal>,
 }
@@ -51,7 +46,7 @@ pub fn new(
     server: &ServerHandle,
     bc: &Arc<Mutex<Blockchain>>,
     mp: &Arc<Mutex<Mempool>>
-) -> (Context, Handle) {
+) -> (Context, Generator) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
     let ctx = Context {
@@ -60,19 +55,17 @@ pub fn new(
         server: server.clone(),
         bc: Arc::clone(bc),
         mp: Arc::clone(mp),
-        mined: 0,
-        inserted: 0,
         start_time: SystemTime::now(),
     };
 
-    let handle = Handle {
+    let generator = Generator {
         control_chan: signal_chan_sender,
     };
 
-    (ctx, handle)
+    (ctx, generator)
 }
 
-impl Handle {
+impl Generator {
     pub fn exit(&self) {
         self.control_chan.send(ControlSignal::Exit).unwrap();
     }
@@ -137,61 +130,19 @@ impl Context {
                 return;
             }
 
-            // get parent
-            let mut bc = self.bc.lock().unwrap();
+            // get blockchain state
+
+            // generate trans (may be invalid)
+            let trans = generate_random_signedtrans();
+
+            // get mempool
             let mp = self.mp.lock().unwrap().clone().pool;
-            let parent = bc.tip();
 
-            // get timestamp
-            let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+            // add to mempool
 
-            // get difficulty
-            let difficulty = bc.get_difficulty();
-
-            // generate merkle root
-            let mut trans = Vec::<SignedTrans>::new();
-            for (hash,val) in mp.clone(){
-                // if cnt==3{
-                //     break;
-                // }
-                trans.push(val);
-                self.mp.lock().unwrap().pool.remove(&hash);
-                // cnt += 1;
-            }
-            drop(mp);
-            let merkle_tree = MerkleTree::new(&trans);
-            let root = merkle_tree.root();
-
-            // generate nonce
-            let nonce = rand::thread_rng().gen::<u32>();
-
-            let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
-
-            self.mined += 1;
-            // if self.mined % 100 == 0 {
-            //     println!("{:?} {}", difficulty, self.mined);
-            // }
-            if blk.hash() <= difficulty {
-                bc.insert(&blk);
-                self.inserted += 1;
-
-                // broadcast to peers
-                let mut block_vec = Vec::new();
-                block_vec.push(blk.hash());
-                let msg = Message::NewBlockHashes(block_vec);
-                self.server.broadcast(msg);
-
-                mined_size += serde_json::to_string(&blk).unwrap().len();
-                if self.inserted % 100 == 0 {
-                    println!("avg block size:{:?}", mined_size as u32/self.mined);
-                }
-            }
-
-            if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 120 {
-                println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());
-                println!("========== avg block size:{:?}/{:?}={:?}", mined_size, self.inserted, mined_size as u32/self.inserted);
-                break
-            }
+            // broadcast
+            let msg = Message::NewTransactionHashes(vec![trans.hash()]);
+            self.server.broadcast(msg);
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {
