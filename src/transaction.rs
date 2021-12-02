@@ -30,12 +30,12 @@ impl Hashable for Input {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Output {
-    pub index: u8,
+    pub balance: u8,
     pub address: H160
 }
 
 impl Output{
-    pub fn get_val(&self) -> u8 {self.clone().index }
+    pub fn get_val(&self) -> u8 {self.clone().balance }
     pub fn get_address(&self) -> H160 {self.clone().address}
 }
 
@@ -54,13 +54,13 @@ impl Hashable for Output{
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Transaction {
-    pub id: u8,
+    pub id: H256,
     pub inputs: Vec<Input>,
     pub outputs: Vec<Output>
 }
 
 impl Transaction{
-    pub fn get_id(&self) -> u8{self.clone().id}
+    pub fn get_id(&self) -> H256{self.clone().id}
     pub fn get_input(&self) -> Vec<Input>{self.clone().inputs}
     pub fn get_output(&self) -> Vec<Output>{self.clone().outputs}
 
@@ -77,7 +77,7 @@ impl Transaction{
     }
 
     pub fn output_val(&self) -> u8 {
-        self.outputs.iter().map(|output| output.index).sum()
+        self.outputs.iter().map(|output| output.balance).sum()
     }
 }
 
@@ -101,8 +101,8 @@ pub fn coin_base(address: &H160) -> Transaction{
     use hex_literal::hex;
     let hash = (hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")).into();
     let input = Input{index: 0, previous_hash: hash};
-    let output = Output{ index: 10,  address: address.clone()};
-    let t = Transaction{id:1, inputs: vec![input], outputs: vec![output]};
+    let output = Output{ balance: 10,  address: address.clone()};
+    let t = Transaction{id:generate_rand_hash256(), inputs: vec![input], outputs: vec![output]};
     t
 }
 
@@ -116,8 +116,8 @@ pub fn generate_random_transaction() -> Transaction {
     let inputs = Input{index, previous_hash:hash};
     let val:u8 = rng.gen();
     let address = generate_rand_hash160();
-    let outputs = Output{ index: val, address};
-    let id: u8 = rng.gen();
+    let outputs = Output{ balance: val, address};
+    let id = generate_rand_hash256();
     let trans = Transaction{id, inputs:vec![inputs], outputs:vec![outputs] };
     trans
 }

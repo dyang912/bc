@@ -8,6 +8,7 @@ use crate::crypto::merkle::MerkleTree;
 use crate::signedtrans::SignedTrans;
 use crate::network::message::Message;
 use crate::mempool::Mempool;
+use crate::crypto::key_pair;
 
 
 use log::info;
@@ -16,7 +17,8 @@ use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
 use std::time;
 
 use std::thread;
-use crate::crypto::hash::Hashable;
+use ring::signature::{Ed25519KeyPair, KeyPair};
+use crate::crypto::hash::{H160, Hashable};
 
 enum ControlSignal {
     Start(u64), // the number controls the lambda of interval between block generation
@@ -39,6 +41,8 @@ pub struct Context {
     mined: u32,
     inserted: u32,
     start_time: SystemTime,
+    key: Ed25519KeyPair,
+    self_address:H160,
 }
 
 #[derive(Clone)]
@@ -63,6 +67,8 @@ pub fn new(
         mined: 0,
         inserted: 0,
         start_time: SystemTime::now(),
+        key: key_pair::random(),
+        self_address: Default::default()
     };
 
     let handle = Handle {
@@ -113,6 +119,18 @@ impl Context {
 
     fn miner_loop(&mut self) {
         let mut mined_size:usize = 0;
+
+        let key = key_pair::random();
+        let public_key = key.public_key();
+        let byte_pbkey = public_key.as_ref();
+        let address = H160::hash(&byte_pbkey);
+        println!("self address: {:?}",address);
+        let mut address_vec = vec![address];
+        self.bc.lock().unwrap().address_list.push(address);
+        self.server.broadcast(Message::Address(address_vec));
+        println!("self address: {:?}", self.bc.lock().unwrap().address_list);
+        self.key = key;
+        self.self_address = address;
 
         let mut trans = Vec::<SignedTrans>::new();
         // main mining loop

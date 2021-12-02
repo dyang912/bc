@@ -5,7 +5,7 @@ use crate::transaction::{Input, Output};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct State{
-    pub map: HashMap<H256, Output>
+    pub map: HashMap<H256, Output> // txID -> Output
 }
 
 impl State{

@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::time::SystemTime;
 use crate::block::Block;
-use crate::crypto::hash::{H256, Hashable};
+use crate::crypto::hash::{H160, H256, Hashable};
 use crate::block::generate_genesis_block;
 use crate::transaction::Transaction;
 use crate::state::State;
@@ -15,6 +15,7 @@ pub struct Blockchain {
     tip: H256,
     block_num:u128,
     pub current_state: State,
+    pub address_list: Vec<H160>
 }
 
 impl Blockchain {
@@ -34,7 +35,8 @@ impl Blockchain {
             height: 0,
             tip: hashvalue,
             block_num: 0,
-            current_state: State::new()
+            current_state: State::new(),
+            address_list: Vec::new(),
         }
     }
 
@@ -104,7 +106,23 @@ impl Blockchain {
                 st.remove(&hash);
             }
         }
+        for out in transaction.clone().outputs {
+            st.insert(transaction.id,out.clone());
+        }
+
         self.current_state = State{map:st};
+        self.print_state();
+    }
+
+    pub fn print_state(&self) {
+        let mut balance:HashMap<H160, u8> = HashMap::new();
+        for account in self.clone().address_list {
+            balance.insert(account, 0);
+        }
+        for (_, out) in self.clone().current_state.map {
+            *balance.get_mut(&out.address).unwrap() += out.balance;
+        }
+        println!("state:{:?}", balance);
     }
 
     /// Get the last block's hash of the longest chain

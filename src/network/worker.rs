@@ -204,7 +204,7 @@ impl Context {
                 }
 
                 Message::Transactions(txes) => {
-                    println!("Transaction");
+                    println!("received Transaction");
                     // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
                     let mem_pool = self.mem_pool.lock().unwrap().clone();
                     let mut new_tx_hashes = Vec::new();
@@ -230,8 +230,27 @@ impl Context {
                     if !new_tx_hashes.is_empty() {
                         self.server.broadcast(Message::NewTransactionHashes(new_tx_hashes));
                     }
+                }
 
-
+                Message::Address(add)=>{
+                    println!("new address:{:?}", add);
+                    let mut blockchain = self.bc.lock().unwrap();
+                    let mut newadd = vec![];
+                    for address in add{
+                        if !blockchain.address_list.contains(&address){
+                            newadd.push(address);
+                            blockchain.address_list.push(address);
+                        }
+                    }
+                    // println!("{:?}", blockchain.address_list);
+                    if newadd.len()>0{
+                        for address in blockchain.address_list.clone() {
+                            if !newadd.contains(&address){
+                                newadd.push(address);
+                            }
+                        }
+                        self.server.broadcast(Message::Address(newadd));
+                    }
                 }
             }
         }

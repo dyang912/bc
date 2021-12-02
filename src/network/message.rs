@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::crypto::hash::H256;
+use crate::crypto::hash::{H160, H256};
 use crate::block::Block;
 use crate::signedtrans::{SignedTrans};
 
@@ -12,5 +12,6 @@ pub enum Message {
     Blocks(Vec<Block>),
     NewTransactionHashes(Vec<H256>),
     GetTransactions(Vec<H256>),
-    Transactions(Vec<SignedTrans>)
+    Transactions(Vec<SignedTrans>),
+    Address(Vec<H160>)
 }

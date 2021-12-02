@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use crate::network::server::Handle as ServerHandle;
 use crate::blockchain::Blockchain;
-use crate::signedtrans::generate_random_signedtrans;
+use crate::signedtrans::{generate_random_signedtrans, SignedTrans};
 use crate::network::message::Message;
 use crate::mempool::Mempool;
 
@@ -13,7 +13,11 @@ use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
 use std::time;
 
 use std::thread;
-use crate::crypto::hash::Hashable;
+use rand::Rng;
+use ring::signature::KeyPair;
+use crate::crypto::hash::{generate_rand_hash256, H256, Hashable};
+use crate::crypto::key_pair;
+use crate::transaction::{Input, Output, sign, Transaction};
 
 enum ControlSignal {
     Start(u64), // the number controls the lambda of interval between block generation
@@ -134,8 +138,28 @@ impl Context {
             let mut bc = self.bc.lock().unwrap();
             let state = bc.clone().current_state;
 
+            // generate in & out
+            let mut rng = rand::thread_rng();
+            let hash:H256 = generate_rand_hash256();
+            let index:u8 = rng.gen();
+            let inputs = Input{index, previous_hash:hash};
+            let val:u8 = rng.gen();
+            let dest_address = bc.address_list[0];
+            let outputs = Output{ balance: 1, address:dest_address};
+            let id = generate_rand_hash256();
+            let trans = Transaction{id, inputs:vec![inputs], outputs:vec![outputs] };
+
+            // generate signature
+            let key = key_pair::random();
+            let s = sign(&trans, &key);
+            let p = key.public_key().as_ref().to_vec();
+
             // generate trans using state (may be invalid)
-            let trans = generate_random_signedtrans();
+            let trans = SignedTrans{
+                transaction: trans,
+                signature: s,
+                public_key: p,
+            };
 
             // get mempool
             let mut mp = self.mp.lock().unwrap();
