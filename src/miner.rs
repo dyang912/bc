@@ -113,6 +113,8 @@ impl Context {
 
     fn miner_loop(&mut self) {
         let mut mined_size:usize = 0;
+
+        let mut trans = Vec::<SignedTrans>::new();
         // main mining loop
         loop {
             // check and react to control signals
@@ -149,13 +151,12 @@ impl Context {
             let difficulty = bc.get_difficulty();
 
             // generate merkle root
-            let mut trans = Vec::<SignedTrans>::new();
             for (hash,val) in mp.clone(){
                 // if cnt==3{
                 //     break;
                 // }
                 trans.push(val);
-                self.mp.lock().unwrap().pool.remove(&hash);  // TODO: currently its wrong !!!
+                self.mp.lock().unwrap().pool.remove(&hash);
                 // cnt += 1;
             }
             drop(mp);
@@ -165,13 +166,13 @@ impl Context {
             // generate nonce
             let nonce = rand::thread_rng().gen::<u32>();
 
-            let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans);
+            let blk = Block::new(parent,nonce,difficulty,timestamp,root,trans.clone());
 
             self.mined += 1;
             if self.mined % 1000 == 0 {
                 println!("{:?} {}", difficulty, self.mined);
             }
-            if blk.hash() <= difficulty {
+            if blk.hash() <= difficulty && !trans.is_empty() {
                 bc.insert(&blk);
                 self.inserted += 1;
 
@@ -186,6 +187,8 @@ impl Context {
                 if self.inserted % 100 == 0 {
                     println!("avg block size:{:?}", mined_size as u32/self.mined);
                 }
+
+                trans = Vec::<SignedTrans>::new();
             }
 
             if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 300 {

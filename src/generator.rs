@@ -131,8 +131,8 @@ impl Context {
             }
 
             // get blockchain state
-            let bc = self.bc.lock().unwrap().clone();
-            let state = bc.current_state;
+            let mut bc = self.bc.lock().unwrap();
+            let state = bc.clone().current_state;
 
             // generate trans using state (may be invalid)
             let trans = generate_random_signedtrans();
@@ -143,6 +143,9 @@ impl Context {
             // add to mempool
             mp.add(&trans);
             drop(mp);
+
+            bc.update_state(&trans.clone().transaction);
+            drop(bc);
 
             // broadcast
             let msg = Message::NewTransactionHashes(vec![trans.hash()]);
