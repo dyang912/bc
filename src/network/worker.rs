@@ -196,7 +196,7 @@ impl Context {
                 }
 
                 Message::GetTransactions(tx_hash) => {
-                    println!("Received a GetTransactions message");
+                    // println!("Received a GetTransactions message");
                     // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
 
                     let mut new_tx:Vec<SignedTrans> = Vec::new();
@@ -214,7 +214,7 @@ impl Context {
                 }
 
                 Message::Transactions(txes) => {
-                    println!("received Transaction:{:?} trans {:?} to {:?}",
+                    println!("received Transaction: {:?} trans {:?} to {:?}",
                              H160::hash(&txes[0].public_key),
                              txes[0].transaction.outputs[0].balance,
                              txes[0].transaction.outputs[0].address);
@@ -235,7 +235,7 @@ impl Context {
                                 let buf = tx.clone();
                                 self.mem_pool.lock().unwrap().pool.insert(tx.hash(), buf);
                                 new_tx_hashes.push(tx.hash());
-                                chain.update_state(&tx.transaction, self.mem_pool.lock().unwrap().clone().pool.len());
+                                chain.update_state(&tx, self.mem_pool.lock().unwrap().clone().pool.len());
                             }
                         }
                     }

@@ -120,18 +120,6 @@ impl Context {
     fn miner_loop(&mut self) {
         let mut mined_size:usize = 0;
 
-        let key = key_pair::random();
-        let public_key = key.public_key();
-        let byte_pbkey = public_key.as_ref();
-        let address = H160::hash(&byte_pbkey);
-        println!("self address: {:?}",address);
-        let mut address_vec = vec![address];
-        self.bc.lock().unwrap().address_list.push(address);
-        self.server.broadcast(Message::Address(address_vec));
-        println!("self address: {:?}", self.bc.lock().unwrap().address_list);
-        self.key = key;
-        self.self_address = address;
-
         // main mining loop
         loop {
             // check and react to control signals

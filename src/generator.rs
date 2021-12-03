@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use crate::network::server::Handle as ServerHandle;
@@ -15,7 +16,7 @@ use std::time;
 use std::thread;
 use rand::Rng;
 use ring::signature::KeyPair;
-use crate::crypto::hash::{generate_rand_hash256, H256, Hashable};
+use crate::crypto::hash::{generate_rand_hash256, H160, H256, Hashable};
 use crate::crypto::key_pair;
 use crate::transaction::{Input, Output, sign, Transaction};
 
@@ -87,7 +88,7 @@ impl Context {
         thread::Builder::new()
             .name("miner".to_string())
             .spawn(move || {
-                self.miner_loop();
+                self.generator_loop();
             })
             .unwrap();
         info!("Generator initialized into paused mode");
@@ -108,9 +109,11 @@ impl Context {
         }
     }
 
-    fn miner_loop(&mut self) {
-        let mut mined_size:usize = 0;
-        // main mining loop
+    fn generator_loop(&mut self) {
+
+        let mut flag = true;
+        let mut key_map = HashMap::new();
+
         loop {
             // check and react to control signals
             match self.operating_state {
@@ -134,26 +137,80 @@ impl Context {
                 return;
             }
 
+            if flag {
+                for i in 0..3 {
+                    let key = key_pair::random();
+                    let public_key = key.public_key();
+                    let byte_pbkey = public_key.as_ref();
+                    let address = H160::hash(&byte_pbkey);
+                    println!("generate address: {:?}",address);
+                    let mut address_vec = vec![address];
+                    self.bc.lock().unwrap().address_list.push(address);
+                    self.server.broadcast(Message::Address(address_vec));
+                    key_map.insert(address, key);
+                }
+                println!("all addresses: {:?}", self.bc.lock().unwrap().address_list);
+
+                // init money
+                let mut bc = self.bc.lock().unwrap();
+                for addr in bc.address_list.clone(){
+                    let mut init = vec![];
+                    init.push(Output{
+                        balance:0,
+                        address:addr,
+                    });
+                    let trans = Transaction{id: generate_rand_hash256(), inputs: vec![], outputs: init};
+                    let key = key_pair::random();
+                    let trans = SignedTrans{
+                        transaction: trans.clone(),
+                        signature: sign(&trans, &key),
+                        public_key: key.public_key().as_ref().to_vec(),
+                    };
+                    bc.update_state(&trans.clone(), self.mp.lock().unwrap().clone().pool.len());
+                    let msg = Message::NewTransactionHashes(vec![trans.hash()]);
+                    self.server.broadcast(msg);
+                }
+                drop(bc);
+            }
+            flag = false;
+
             // get blockchain state
             let mut bc = self.bc.lock().unwrap();
             let state = bc.clone().current_state;
 
             // generate in & out
             let mut rng = rand::thread_rng();
-            let hash:H256 = generate_rand_hash256();
-            let index:u8 = rng.gen();
-            let inputs = Input{index, previous_hash:hash};
+            let chance:u8 = rng.gen();
+            let mut from_key = &key_pair::random();
+            let mut from_tx = generate_rand_hash256();
+            if chance % 10 < 7 {
+                let mut skip:u8 = rng.gen();
+                skip %= state.sig.len() as u8;
+                for (_, tx) in state.sig {
+                    let from_add = &tx.transaction.outputs[0].address;
+                    if key_map.contains_key(from_add) {
+                        from_key = key_map.get(from_add).unwrap();
+                        from_tx = tx.transaction.id;
+                    }
+                    if skip == 0 {
+                        break;
+                    }
+                    skip -= 1;
+                }
+            }
+            let inputs = Input{index: 1, previous_hash:from_tx};
+
             let mut val:u8 = rng.gen();
             val %= bc.address_list.len() as u8;
             let dest_address = bc.address_list[val as usize];
             let outputs = Output{ balance: 1, address:dest_address};
+
             let id = generate_rand_hash256();
             let trans = Transaction{id, inputs:vec![inputs], outputs:vec![outputs] };
 
             // generate signature
-            let key = key_pair::random();
-            let s = sign(&trans, &key);
-            let p = key.public_key().as_ref().to_vec();
+            let s = sign(&trans, &from_key);
+            let p = from_key.public_key().as_ref().to_vec();
 
             // generate trans using state (may be invalid)
             let trans = SignedTrans{
@@ -169,7 +226,7 @@ impl Context {
             mp.add(&trans);
             drop(mp);
 
-            bc.update_state(&trans.clone().transaction, self.mp.lock().unwrap().clone().pool.len());
+            bc.update_state(&trans.clone(), self.mp.lock().unwrap().clone().pool.len());
             drop(bc);
 
             // broadcast

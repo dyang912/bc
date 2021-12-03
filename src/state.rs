@@ -1,17 +1,20 @@
 use serde::{Serialize,Deserialize};
 use std::collections::HashMap;
 use crate::crypto::hash::H256;
+use crate::signedtrans::SignedTrans;
 use crate::transaction::{Input, Output};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct State{
-    pub map: HashMap<H256, Output> // txID -> Output
+    pub map: HashMap<H256, Output>, // txID -> Output
+    pub sig: HashMap<H256, SignedTrans>  // txID -> pubKey
 }
 
 impl State{
     pub fn new() -> Self{
         State{
             map: HashMap::new(),
+            sig: HashMap::new()
         }
     }
 

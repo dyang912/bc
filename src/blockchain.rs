@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use crate::block::Block;
 use crate::crypto::hash::{H160, H256, Hashable};
 use crate::block::generate_genesis_block;
+use crate::signedtrans::SignedTrans;
 use crate::transaction::Transaction;
 use crate::state::State;
 
@@ -91,11 +92,14 @@ impl Blockchain {
         ts.as_millis() - block.header.get_create_time()
     }
 
-    pub fn update_state(&mut self, transaction:&Transaction, memp_size:usize) {
+    pub fn update_state(&mut self, sigtrans:&SignedTrans, memp_size:usize) {
+        let transaction = sigtrans.clone().transaction;
         // let hash = block.hash();
         // self.block_state.insert(hash, State::new());
         // return
         let mut st = self.current_state.clone().map;
+        let mut sig = self.current_state.clone().sig;
+        sig.insert(sigtrans.transaction.id, sigtrans.clone());
         let mut collection = HashMap::new();
         let vec_in = transaction.inputs.clone();
         for tx_in in vec_in {
@@ -104,13 +108,14 @@ impl Blockchain {
         for (hash,_) in st.clone() {
             if collection.contains_key(&hash){
                 st.remove(&hash);
+                sig.remove(&hash);
             }
         }
         for out in transaction.clone().outputs {
             st.insert(transaction.id,out.clone());
         }
 
-        self.current_state = State{map:st};
+        self.current_state = State{map:st, sig};
         self.print_state(memp_size);
     }
 
