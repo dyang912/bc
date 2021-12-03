@@ -16,7 +16,7 @@ pub struct Header {
 #[derive(Serialize, Deserialize, Debug,Default, Clone)]
 pub struct Block {
     pub header: Header,
-    content: Vec<SignedTrans>
+    pub content: Vec<SignedTrans>
 }
 
 impl Hashable for Header {

@@ -6,7 +6,7 @@ use log::{debug, warn};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use crate::block::Block;
-use crate::crypto::hash::{H256, Hashable};
+use crate::crypto::hash::{H160, H256, Hashable};
 use crate::blockchain::Blockchain;
 use crate::signedtrans::{SignedTrans};
 use crate::transaction::verify;
@@ -130,6 +130,11 @@ impl Context {
                                     if block.header.difficulty!= blkchain.blocks.get(new_block_parent).unwrap().0.header.difficulty {
                                         continue;
                                     }
+                                    let mut pool = self.mem_pool.lock().unwrap();
+                                    let signed_tx = block.content.clone();
+                                    for tx in signed_tx{
+                                        pool.remove(&tx);
+                                    }
                                     // block.hash() < blkchain.blockchain.get(new_block_parent).unwrap().header.difficulty {
                                     blkchain.insert(&block.clone());
                                     memory.remove(&block.header.parent);
@@ -139,6 +144,11 @@ impl Context {
                                     let mut inserted: H256 = block.hash();
                                     while memory.contains_key(&inserted) {
                                         let next_insert = memory.get(&inserted).unwrap().clone();
+                                        let mut pool = self.mem_pool.lock().unwrap();
+                                        let signed_tx = block.content.clone();
+                                        for tx in signed_tx{
+                                            pool.remove(&tx);
+                                        }
                                         blkchain.insert(&next_insert.clone());
                                         memory.remove(&inserted);
                                         inserted = next_insert.hash();
@@ -164,13 +174,13 @@ impl Context {
                         }
                         peer.write(Message::GetBlocks(no_parents));
                     }
-                    if reveived>0{
-                        println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
-                    }
+                    // if reveived>0{
+                    //     println!("avg delay:{:?}/{:?}={:?}", total_delay, blkchain.get_block_num(), total_delay / reveived);
+                    // }
                 }
 
                 Message::NewTransactionHashes(tx_hash) => {
-                    println!("NewTransactionHashes");
+                    // println!("NewTransactionHashes");
                     // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
 
                     let mut new_tx_hashes:Vec<H256> = Vec::new();
@@ -204,7 +214,10 @@ impl Context {
                 }
 
                 Message::Transactions(txes) => {
-                    println!("received Transaction");
+                    println!("received Transaction:{:?} trans {:?} to {:?}",
+                             H160::hash(&txes[0].public_key),
+                             txes[0].transaction.outputs[0].balance,
+                             txes[0].transaction.outputs[0].address);
                     // println!("total block in chain {}",self.blkchain.lock().unwrap().get_num());
                     let mem_pool = self.mem_pool.lock().unwrap().clone();
                     let mut new_tx_hashes = Vec::new();
@@ -222,7 +235,7 @@ impl Context {
                                 let buf = tx.clone();
                                 self.mem_pool.lock().unwrap().pool.insert(tx.hash(), buf);
                                 new_tx_hashes.push(tx.hash());
-                                chain.update_state(&tx.transaction);
+                                chain.update_state(&tx.transaction, self.mem_pool.lock().unwrap().clone().pool.len());
                             }
                         }
                     }

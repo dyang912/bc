@@ -91,7 +91,7 @@ impl Blockchain {
         ts.as_millis() - block.header.get_create_time()
     }
 
-    pub fn update_state(&mut self, transaction:&Transaction) {
+    pub fn update_state(&mut self, transaction:&Transaction, memp_size:usize) {
         // let hash = block.hash();
         // self.block_state.insert(hash, State::new());
         // return
@@ -111,10 +111,10 @@ impl Blockchain {
         }
 
         self.current_state = State{map:st};
-        self.print_state();
+        self.print_state(memp_size);
     }
 
-    pub fn print_state(&self) {
+    pub fn print_state(&self, memp_size:usize) {
         let mut balance:HashMap<H160, u8> = HashMap::new();
         for account in self.clone().address_list {
             balance.insert(account, 0);
@@ -122,7 +122,7 @@ impl Blockchain {
         for (_, out) in self.clone().current_state.map {
             *balance.get_mut(&out.address).unwrap() += out.balance;
         }
-        println!("state:{:?}", balance);
+        println!("state:{:?} mempool size:{:?}", balance, memp_size);
     }
 
     /// Get the last block's hash of the longest chain

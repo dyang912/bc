@@ -132,7 +132,6 @@ impl Context {
         self.key = key;
         self.self_address = address;
 
-        let mut trans = Vec::<SignedTrans>::new();
         // main mining loop
         loop {
             // check and react to control signals
@@ -169,13 +168,9 @@ impl Context {
             let difficulty = bc.get_difficulty();
 
             // generate merkle root
-            for (hash,val) in mp.clone(){
-                // if cnt==3{
-                //     break;
-                // }
+            let mut trans = Vec::<SignedTrans>::new();
+            for (_,val) in mp.clone() {
                 trans.push(val);
-                self.mp.lock().unwrap().pool.remove(&hash);
-                // cnt += 1;
             }
             drop(mp);
             let merkle_tree = MerkleTree::new(&trans);
@@ -191,10 +186,12 @@ impl Context {
                 println!("{:?} {}", difficulty, self.mined);
             }
             if blk.hash() <= difficulty && !trans.is_empty() {
+                for tx in blk.clone().content {
+                    self.mp.lock().unwrap().remove(&tx);
+                }
                 bc.insert(&blk);
                 self.inserted += 1;
 
-                println!("{:?}", blk);
                 // broadcast to peers
                 let mut block_vec = Vec::new();
                 block_vec.push(blk.hash());
@@ -205,9 +202,8 @@ impl Context {
                 if self.inserted % 100 == 0 {
                     println!("avg block size:{:?}", mined_size as u32/self.mined);
                 }
-
-                trans = Vec::<SignedTrans>::new();
             }
+            drop(bc);
 
             if SystemTime::now().duration_since(self.start_time).unwrap().as_secs() >= 300 {
                 println!("---------- result : {:?}, {}/{}, {:?}", difficulty, self.inserted, self.mined, SystemTime::now());

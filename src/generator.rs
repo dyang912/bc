@@ -143,8 +143,9 @@ impl Context {
             let hash:H256 = generate_rand_hash256();
             let index:u8 = rng.gen();
             let inputs = Input{index, previous_hash:hash};
-            let val:u8 = rng.gen();
-            let dest_address = bc.address_list[0];
+            let mut val:u8 = rng.gen();
+            val %= bc.address_list.len() as u8;
+            let dest_address = bc.address_list[val as usize];
             let outputs = Output{ balance: 1, address:dest_address};
             let id = generate_rand_hash256();
             let trans = Transaction{id, inputs:vec![inputs], outputs:vec![outputs] };
@@ -168,7 +169,7 @@ impl Context {
             mp.add(&trans);
             drop(mp);
 
-            bc.update_state(&trans.clone().transaction);
+            bc.update_state(&trans.clone().transaction, self.mp.lock().unwrap().clone().pool.len());
             drop(bc);
 
             // broadcast

@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::ptr::addr_of_mut;
 use crate::crypto::hash::{H256, Hashable};
 use crate::signedtrans::SignedTrans;
 
@@ -32,5 +33,9 @@ impl Mempool {
             self.pool.remove(&hash);
         }
         return
+    }
+
+    pub fn print(&self) {
+        println!("mempool: size:{:?}", self.pool.clone().len());
     }
 }
