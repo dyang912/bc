@@ -1,32 +1,6 @@
-# ELEC_ENG/COMP_ENG 334: Fundamentals of Blockchains and Decentralization
+Implementation of a Blockchain Client
+-------------------------------------
+A simplified Bitcoin client that simulated mining blocks and making transactions in cryptocurrency
 
-Welcome! This is the repository for required projects of the above course.
-
-## Project Suggestion
-You need to run the project on your machines. **We strongly recommend Linux or Mac OS.** On Windows, some package referred by the project has bugs, and we recommend Ubuntu subsystem on Windows.
-
-**We also strongly recommend you install a proper IDE** to make coding in Rust easier. Below are some good choices:
-1. [IntelliJ Rust](https://www.jetbrains.com/rust/). It is free for all _.edu_ email account, specially designed for Rust, and very easy to use.
-2. [VS Code](https://code.visualstudio.com/). It is totally free and very flexible. You need to install an [extension](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) for the Rust language support. Extensions for coding on non-local machines (via WSL/SSH) are also available to download.
-
-
-## Warmup Project
-
-- [Warmup 1](Warmup1). Due 11 PM, September 28, 2021.
-- [Warmup 2](Warmup2). Due 11 PM, October 5, 2021.
-
-## Midterm Project
-
-- You may form a team of 2 with another student in this class for this project.  You do not have to form a team.  If you do at some point, you must work as a team through the end of Part 6.
-- [Part 1](MidtermProject1).
-- [Part 2](MidtermProject2).
-- [Part 3](MidtermProject3).
-- [Part 4](MidtermProject4).
-- [Part 5](MidtermProject5).
-- [Part 6](MidtermProject6).
-
-## Policy
-Submissions later than due date will get 0 points.
-
-## Acknowledgement
-We thank Professor Pramod Viswanath and Xuechao Wang for developing these course projects and for sharing their repository.
+Demo:<br/>
+[![bcdemo](https://user-images.githubusercontent.com/70928881/152908589-ed9a6910-d9a8-4c86-9232-fe55498b2a79.png)](https://youtu.be/zYTh0yzDPn0)
